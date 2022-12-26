@@ -19,6 +19,8 @@ var Daemon = &cobra.Command{
 	Short: "Run as daemon service",
 	Long:  "Daemon Service for WhatsApp Multi-Device GPT",
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Println(log.LogLevelInfo, "Go WhatsApp Multi-Device GPT")
+
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 

@@ -7,13 +7,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/internal/cmd"
-
-	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 )
 
 // Root Variable Structure
 var r = &cobra.Command{
-	Use:   "go-whatsapp-gpt",
+	Use:   "go-whatsapp-multidevice-gpt",
 	Short: "Go WhatsApp Multi-Device GPT",
 	Long:  "Go WhatsApp Multi-Device GPT",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -32,9 +30,6 @@ func init() {
 
 // Main Function
 func main() {
-	log.Println(log.LogLevelInfo, "Go WhatsApp Multi-Device GPT")
-	cmd.ReloadDatastore()
-
 	err := r.Execute()
 	if err != nil {
 		fmt.Println(err.Error())

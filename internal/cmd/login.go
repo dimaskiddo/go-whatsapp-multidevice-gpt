@@ -18,6 +18,9 @@ var Login = &cobra.Command{
 	Short: "Login to Go WhatsApp Multi-Device GPT",
 	Long:  "Login to Go WhatsApp Multi-Device GPT",
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Println(log.LogLevelInfo, "Go WhatsApp Multi-Device GPT")
+
+		ReloadDatastore()
 		if pkgWhatsApp.WhatsAppClient == nil {
 			pkgWhatsApp.WhatsAppInitClient(nil)
 

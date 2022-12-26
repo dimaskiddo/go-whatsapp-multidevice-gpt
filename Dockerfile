@@ -24,7 +24,7 @@ WORKDIR /usr/app/${SERVICE_NAME}
 RUN mkdir -p dbs \
     && chmod 775 dbs
 COPY --from=go-builder /usr/src/app/.env.example ./.env
-COPY --from=go-builder /usr/src/app/main ./main
+COPY --from=go-builder /usr/src/app/main ./go-whatsapp-multidevice-gpt
 
 VOLUME ["/usr/app/${SERVICE_NAME}/dbs"]
-CMD ["main", "daemon"]
+CMD ["go-whatsapp-multidevice-gpt", "daemon"]

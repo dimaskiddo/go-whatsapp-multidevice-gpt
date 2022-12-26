@@ -10,8 +10,8 @@ import (
 var Version = &cobra.Command{
 	Use:   "version",
 	Short: "Show current version",
-	Long:  "Go WhatsApp MultiDevice GPT Version",
+	Long:  "Go WhatsApp Multi-Device GPT Version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Go WhatsApp CLI Version v1.0.0")
+		fmt.Println("Go WhatsApp Multi-Device GPT Version 1.0.0")
 	},
 }

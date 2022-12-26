@@ -13,11 +13,14 @@ var Logout = &cobra.Command{
 	Short: "Logout from Go WhatsApp Multi-Device GPT",
 	Long:  "Logout from Go WhatsApp Multi-Device GPT",
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Println(log.LogLevelInfo, "Go WhatsApp Multi-Device GPT")
+
+		ReloadDatastore()
 		if pkgWhatsApp.WhatsAppClient != nil {
 			pkgWhatsApp.WhatsAppClient.RemoveEventHandlers()
 			pkgWhatsApp.WhatsAppLogout()
 		}
 
-		log.Println(log.LogLevelInfo, "Successfully Logout from WhatsApp")
+		log.Println(log.LogLevelInfo, "Successfully Logged-out WhatsApp Client")
 	},
 }
