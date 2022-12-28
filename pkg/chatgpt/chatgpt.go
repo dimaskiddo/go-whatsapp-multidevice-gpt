@@ -77,5 +77,9 @@ func ChatGPTResponse(question string) (response string, err error) {
 	buffResponse = strings.TrimLeft(buffResponse, ".\n")
 	buffResponse = strings.TrimLeft(buffResponse, "\n")
 
+	if bool(blockedWord.MatchString(strings.ToLower(buffResponse))) {
+		return "Cannot response to this question due to it contains blocked word 🤬", nil
+	}
+
 	return buffResponse, nil
 }
