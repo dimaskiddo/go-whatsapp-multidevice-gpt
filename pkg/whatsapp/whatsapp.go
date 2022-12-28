@@ -14,8 +14,8 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 
-	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/chatgpt"
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/env"
+	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/gpt"
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 )
 
@@ -293,7 +293,7 @@ func WhatsAppComposeStatus(rjid types.JID, isComposing bool, isAudio bool) {
 	_ = WhatsAppClient.SendChatPresence(rjid, typeCompose, typeComposeMedia)
 }
 
-func WhatsAppSendText(ctx context.Context, rjid string, message string) (string, error) {
+func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, response string) (string, error) {
 	if WhatsAppClient != nil {
 		var err error
 
@@ -304,19 +304,25 @@ func WhatsAppSendText(ctx context.Context, rjid string, message string) (string,
 		}
 
 		// Compose New Remote JID
-		remoteJID := WhatsAppComposeJID(rjid)
+		remoteJID := WhatsAppComposeJID(event.Info.Sender.User)
 		if WhatsAppGetJID(remoteJID.String()).IsEmpty() {
 			return "", errors.New("WhatsApp Personal ID is Not Registered")
 		}
 
 		// Set Chat Presence
-		WhatsAppComposeStatus(remoteJID, true, false)
 		defer WhatsAppComposeStatus(remoteJID, false, false)
 
 		// Compose WhatsApp Proto
 		msgId := whatsmeow.GenerateMessageID()
 		msgContent := &waproto.Message{
-			Conversation: proto.String(message),
+			ExtendedTextMessage: &waproto.ExtendedTextMessage{
+				Text: proto.String(response),
+				ContextInfo: &waproto.ContextInfo{
+					StanzaId:      proto.String(event.Info.ID),
+					Participant:   proto.String(remoteJID.String()),
+					QuotedMessage: event.Message,
+				},
+			},
 		}
 
 		// Send WhatsApp Message Proto
@@ -335,28 +341,33 @@ func WhatsAppSendText(ctx context.Context, rjid string, message string) (string,
 func WhatsAppHandler(event interface{}) {
 	switch evt := event.(type) {
 	case *events.Message:
-		realRJID := evt.Info.Sender.User
-		maskRJID := realRJID[0:len(realRJID)-4] + "xxxx"
+		var err error
+		var response string
 
-		if realRJID != WhatsAppClient.Store.ID.User {
-			rMessage := strings.TrimSpace(*evt.Message.Conversation)
+		if evt.Info.MediaType == "" {
+			realRJID := evt.Info.Sender.User
+			maskRJID := realRJID[0:len(realRJID)-4] + "xxxx"
 
-			if strings.Contains(rMessage, chatGPTTag+" ") {
-				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
-				question := strings.TrimSpace(splitByTag[1])
+			if realRJID != WhatsAppClient.Store.ID.User {
+				rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
-				log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
-				log.Println(log.LogLevelInfo, "From     : "+maskRJID)
-				log.Println(log.LogLevelInfo, "Question : "+question)
+				if strings.Contains(rMessage, chatGPTTag+" ") {
+					splitByTag := strings.Split(rMessage, chatGPTTag+" ")
+					question := strings.TrimSpace(splitByTag[1])
 
-				response, err := chatgpt.ChatGPTResponse(question)
-				if err != nil {
-					response = "Failed to Get Reponse, Got Timeout from ChatGPT 🙈"
-				}
+					log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
+					log.Println(log.LogLevelInfo, "From     : "+maskRJID)
+					log.Println(log.LogLevelInfo, "Question : "+question)
 
-				_, err = WhatsAppSendText(context.Background(), realRJID, response)
-				if err != nil {
-					log.Println(log.LogLevelError, "Failed to Send ChatGPT Response")
+					response, err = gpt.GPTResponse(question)
+					if err != nil {
+						response = "Failed to Get Reponse, Got Timeout from OpenAI GPT 🙈"
+					}
+
+					_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
+					if err != nil {
+						log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
+					}
 				}
 			}
 		}

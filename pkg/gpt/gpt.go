@@ -1,4 +1,4 @@
-package chatgpt
+package gpt
 
 import (
 	"context"
@@ -6,18 +6,23 @@ import (
 	"regexp"
 	"strings"
 
-	gpt "github.com/PullRequestInc/go-gpt3"
+	gpt3 "github.com/PullRequestInc/go-gpt3"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/env"
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 )
 
-var OpenAI gpt.Client
+var OpenAI gpt3.Client
 
 var gptModelName string
 var gptModelToken int
-var gptModelTemprature float32
-var gptModelTopP float32
+
+var (
+	gptModelTemprature,
+	gptModelTopP,
+	gptModelPenaltyPresence,
+	gptModelPenaltyFreq float32
+)
 
 var gptBlockedWord string
 
@@ -49,16 +54,26 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Top P")
 	}
 
+	gptModelPenaltyPresence, err = env.GetEnvFloat32("CHATGPT_MODEL_PENALTY_PRESENCE")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Penalty Presence")
+	}
+
+	gptModelPenaltyFreq, err = env.GetEnvFloat32("CHATGPT_MODEL_PENALTY_FREQUENCY")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Penalty Frequency")
+	}
+
 	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex"
 	envBlockedWord := strings.TrimSpace(os.Getenv("CHATGPT_BLOCKED_WORD"))
 	if len(envBlockedWord) > 0 {
 		gptBlockedWord = gptBlockedWord + "|" + envBlockedWord
 	}
 
-	OpenAI = gpt.NewClient(gptAPIKey)
+	OpenAI = gpt3.NewClient(gptAPIKey)
 }
 
-func ChatGPTResponse(question string) (response string, err error) {
+func GPTResponse(question string) (response string, err error) {
 	blockedWord := regexp.MustCompile(strings.ToLower(gptBlockedWord))
 
 	if bool(blockedWord.MatchString(strings.ToLower(question))) {
@@ -68,11 +83,13 @@ func ChatGPTResponse(question string) (response string, err error) {
 	gptResponse, err := OpenAI.CompletionWithEngine(
 		context.Background(),
 		gptModelName,
-		gpt.CompletionRequest{
-			Prompt:      []string{question},
-			MaxTokens:   gpt.IntPtr(gptModelToken),
-			Temperature: gpt.Float32Ptr(gptModelTemprature),
-			TopP:        gpt.Float32Ptr(gptModelTopP),
+		gpt3.CompletionRequest{
+			Prompt:           []string{question},
+			MaxTokens:        gpt3.IntPtr(gptModelToken),
+			Temperature:      gpt3.Float32Ptr(gptModelTemprature),
+			TopP:             gpt3.Float32Ptr(gptModelTopP),
+			PresencePenalty:  *gpt3.Float32Ptr(gptModelPenaltyPresence),
+			FrequencyPenalty: *gpt3.Float32Ptr(gptModelPenaltyFreq),
 		},
 	)
 
