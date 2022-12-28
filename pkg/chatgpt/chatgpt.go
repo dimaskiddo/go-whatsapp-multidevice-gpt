@@ -17,6 +17,7 @@ var OpenAI gpt.Client
 var gptModelName string
 var gptModelToken int
 var gptModelTemprature float32
+var gptModelTopP float32
 
 var gptBlockedWord string
 
@@ -43,6 +44,11 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Temprature")
 	}
 
+	gptModelTopP, err = env.GetEnvFloat32("CHATGPT_MODEL_TOP_P")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Top P")
+	}
+
 	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex"
 	envBlockedWord := strings.TrimSpace(os.Getenv("CHATGPT_BLOCKED_WORD"))
 	if len(envBlockedWord) > 0 {
@@ -66,6 +72,7 @@ func ChatGPTResponse(question string) (response string, err error) {
 			Prompt:      []string{question},
 			MaxTokens:   gpt.IntPtr(gptModelToken),
 			Temperature: gpt.Float32Ptr(gptModelTemprature),
+			TopP:        gpt.Float32Ptr(gptModelTopP),
 		},
 	)
 
