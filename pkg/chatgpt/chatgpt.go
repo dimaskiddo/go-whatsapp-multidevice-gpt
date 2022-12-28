@@ -2,6 +2,7 @@ package chatgpt
 
 import (
 	"context"
+	"os"
 	"regexp"
 	"strings"
 
@@ -42,9 +43,10 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Temprature")
 	}
 
-	gptBlockedWord, err = env.GetEnvString("CHATGPT_BLOCKED_WORD")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Name")
+	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisex|transgender|fuck|sex"
+	envBlockedWord := strings.TrimSpace(os.Getenv("CHATGPT_BLOCKED_WORD"))
+	if len(envBlockedWord) > 0 {
+		gptBlockedWord = gptBlockedWord + "|" + envBlockedWord
 	}
 
 	OpenAI = gpt.NewClient(gptAPIKey)
@@ -53,7 +55,7 @@ func init() {
 func ChatGPTResponse(question string) (response string, err error) {
 	blockedWord := regexp.MustCompile(strings.ToLower(gptBlockedWord))
 	if bool(blockedWord.MatchString(strings.ToLower(question))) {
-		return "Cannot response to this question due to it contains blocked word 🤬", nil
+		return "Cannot response to this question due to it contains blocked word 🥺", nil
 	}
 
 	gptResponse, err := OpenAI.CompletionWithEngine(
