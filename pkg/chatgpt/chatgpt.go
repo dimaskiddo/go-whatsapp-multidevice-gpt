@@ -43,7 +43,7 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Temprature")
 	}
 
-	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisex|transgender|fuck|sex"
+	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex"
 	envBlockedWord := strings.TrimSpace(os.Getenv("CHATGPT_BLOCKED_WORD"))
 	if len(envBlockedWord) > 0 {
 		gptBlockedWord = gptBlockedWord + "|" + envBlockedWord
@@ -54,6 +54,7 @@ func init() {
 
 func ChatGPTResponse(question string) (response string, err error) {
 	blockedWord := regexp.MustCompile(strings.ToLower(gptBlockedWord))
+
 	if bool(blockedWord.MatchString(strings.ToLower(question))) {
 		return "Cannot response to this question due to it contains blocked word 🥺", nil
 	}
@@ -75,12 +76,13 @@ func ChatGPTResponse(question string) (response string, err error) {
 	buffResponse := strings.TrimSpace(gptResponse.Choices[0].Text)
 	buffResponse = strings.TrimLeft(buffResponse, "?\n")
 	buffResponse = strings.TrimLeft(buffResponse, "!\n")
+	buffResponse = strings.TrimLeft(buffResponse, ":\n")
 	buffResponse = strings.TrimLeft(buffResponse, "'\n")
 	buffResponse = strings.TrimLeft(buffResponse, ".\n")
 	buffResponse = strings.TrimLeft(buffResponse, "\n")
 
 	if bool(blockedWord.MatchString(strings.ToLower(buffResponse))) {
-		return "Cannot response to this question due to it contains blocked word 🤬", nil
+		return "Cannot response to this question due to it contains blocked word 🥺", nil
 	}
 
 	return buffResponse, nil
