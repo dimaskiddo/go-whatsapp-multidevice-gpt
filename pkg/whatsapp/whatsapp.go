@@ -21,15 +21,11 @@ import (
 
 var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient *whatsmeow.Client
-var WhatsAppGPTTag string
+
+var chatGPTTag string
 
 func init() {
 	var err error
-
-	WhatsAppGPTTag, err = env.GetEnvString("WHATSAPP_CHATGPT_TAG")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client ChatGPT Tag")
-	}
 
 	dbType, err := env.GetEnvString("WHATSAPP_DATASTORE_TYPE")
 	if err != nil {
@@ -44,6 +40,11 @@ func init() {
 	datastore, err := sqlstore.New(dbType, dbURI, nil)
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
+	}
+
+	chatGPTTag, err = env.GetEnvString("WHATSAPP_CHATGPT_TAG")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client ChatGPT Tag")
 	}
 
 	WhatsAppDatastore = datastore
@@ -339,8 +340,9 @@ func WhatsAppHandler(event interface{}) {
 
 		if realRJID != WhatsAppClient.Store.ID.User {
 			rMessage := strings.TrimSpace(*evt.Message.Conversation)
-			if strings.Contains(rMessage, WhatsAppGPTTag+" ") {
-				splitByTag := strings.Split(rMessage, WhatsAppGPTTag+" ")
+
+			if strings.Contains(rMessage, chatGPTTag+" ") {
+				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
 				question := strings.TrimSpace(splitByTag[1])
 
 				log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
@@ -349,7 +351,7 @@ func WhatsAppHandler(event interface{}) {
 
 				response, err := chatgpt.ChatGPTResponse(question)
 				if err != nil {
-					response = "Failed to Get Response from ChatGPT"
+					response = "Failed to Get Reponse, Got Timeout from ChatGPT 🙈"
 				}
 
 				_, err = WhatsAppSendText(context.Background(), realRJID, response)
