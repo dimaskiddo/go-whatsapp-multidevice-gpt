@@ -279,10 +279,7 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 func WhatsAppHandler(event interface{}) {
 	switch evt := event.(type) {
 	case *events.Message:
-		var err error
-		var response string
-
-		if evt.Info.MediaType == "" {
+		if evt.Message.GetConversation() != "" {
 			realRJID := evt.Info.Chat.String()
 
 			var maskRJID string
@@ -298,26 +295,24 @@ func WhatsAppHandler(event interface{}) {
 				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
 			}
 
-			if realRJID != WhatsAppClient.Store.ID.User {
-				rMessage := strings.TrimSpace(evt.Message.GetConversation())
+			rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
-				if strings.Contains(rMessage, chatGPTTag+" ") {
-					splitByTag := strings.Split(rMessage, chatGPTTag+" ")
-					question := strings.TrimSpace(splitByTag[1])
+			if strings.Contains(rMessage, chatGPTTag+" ") {
+				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
+				question := strings.TrimSpace(splitByTag[1])
 
-					log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
-					log.Println(log.LogLevelInfo, "From     : "+maskRJID)
-					log.Println(log.LogLevelInfo, "Question : "+question)
+				log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
+				log.Println(log.LogLevelInfo, "From     : "+maskRJID)
+				log.Println(log.LogLevelInfo, "Question : "+question)
 
-					response, err = gpt.GPTResponse(question)
-					if err != nil {
-						response = "Failed to Get Reponse, Got Timeout from OpenAI GPT 🙈"
-					}
+				response, err := gpt.GPTResponse(question)
+				if err != nil {
+					response = "Failed to Get Response, Got Timeout from OpenAI GPT 🙈"
+				}
 
-					_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
-					if err != nil {
-						log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
-					}
+				_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
+				if err != nil {
+					log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
 				}
 			}
 		}
