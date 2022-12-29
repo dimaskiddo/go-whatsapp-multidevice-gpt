@@ -206,72 +206,6 @@ func WhatsAppLogout() error {
 	return errors.New("WhatsApp Client is not Valid")
 }
 
-func WhatsAppIsClientOK() error {
-	// Make Sure WhatsApp Client is Connected
-	if !WhatsAppClient.IsConnected() {
-		return errors.New("WhatsApp Client is not Connected")
-	}
-
-	// Make Sure WhatsApp Client is Logged In
-	if !WhatsAppClient.IsLoggedIn() {
-		return errors.New("WhatsApp Client is not Logged In")
-	}
-
-	return nil
-}
-
-func WhatsAppGetJID(id string) types.JID {
-	if WhatsAppClient != nil {
-		var ids []string
-
-		ids = append(ids, "+"+id)
-		infos, err := WhatsAppClient.IsOnWhatsApp(ids)
-		if err == nil {
-			// If WhatsApp ID is Registered Then
-			// Return ID Information
-			if infos[0].IsIn {
-				return infos[0].JID
-			}
-		}
-	}
-
-	// Return Empty ID Information
-	return types.EmptyJID
-}
-
-func WhatsAppComposeJID(id string) types.JID {
-	// Decompose WhatsApp ID First Before Recomposing
-	id = WhatsAppDecomposeJID(id)
-
-	// Check if ID is Group or Not By Detecting '-' for Old Group ID
-	// Or By ID Length That Should be 18 Digits or More
-	if strings.ContainsRune(id, '-') || len(id) >= 18 {
-		// Return New Group User JID
-		return types.NewJID(id, types.GroupServer)
-	}
-
-	// Return New Standard User JID
-	return types.NewJID(id, types.DefaultUserServer)
-}
-
-func WhatsAppDecomposeJID(id string) string {
-	// Check if WhatsApp ID Contains '@' Symbol
-	if strings.ContainsRune(id, '@') {
-		// Split WhatsApp ID Based on '@' Symbol
-		// and Get Only The First Section Before The Symbol
-		buffers := strings.Split(id, "@")
-		id = buffers[0]
-	}
-
-	// Check if WhatsApp ID First Character is '+' Symbol
-	if id[0] == '+' {
-		// Remove '+' Symbol from WhatsApp ID
-		id = id[1:]
-	}
-
-	return id
-}
-
 func WhatsAppComposeStatus(rjid types.JID, isComposing bool, isAudio bool) {
 	// Set Compose Status
 	var typeCompose types.ChatPresence
@@ -298,40 +232,44 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 		var err error
 
 		// Make Sure WhatsApp Client is OK
-		err = WhatsAppIsClientOK()
-		if err != nil {
-			return "", err
+		if WhatsAppClient.IsConnected() && WhatsAppClient.IsLoggedIn() {
+			rJID := event.Info.Chat
+
+			// Set Chat Presence
+			WhatsAppComposeStatus(rJID, true, false)
+			defer WhatsAppComposeStatus(rJID, false, false)
+
+			// Compose WhatsApp Proto
+			var msgContent *waproto.Message
+			msgId := whatsmeow.GenerateMessageID()
+
+			if strings.ContainsRune(rJID.String(), '-') {
+				msgContent = &waproto.Message{
+					Conversation: proto.String(response),
+				}
+			} else {
+				msgContent = &waproto.Message{
+					ExtendedTextMessage: &waproto.ExtendedTextMessage{
+						Text: proto.String(response),
+						ContextInfo: &waproto.ContextInfo{
+							StanzaId:      proto.String(event.Info.ID),
+							Participant:   proto.String(event.Info.Sender.String()),
+							QuotedMessage: event.Message,
+						},
+					},
+				}
+			}
+
+			// Send WhatsApp Message Proto
+			_, err = WhatsAppClient.SendMessage(ctx, rJID, msgId, msgContent)
+			if err != nil {
+				return "", err
+			}
+
+			return msgId, nil
+		} else {
+			return "", errors.New("WhatsApp Client is not Connected or Logged-in")
 		}
-
-		// Compose New Remote JID
-		remoteJID := WhatsAppComposeJID(event.Info.Sender.User)
-		if WhatsAppGetJID(remoteJID.String()).IsEmpty() {
-			return "", errors.New("WhatsApp Personal ID is Not Registered")
-		}
-
-		// Set Chat Presence
-		defer WhatsAppComposeStatus(remoteJID, false, false)
-
-		// Compose WhatsApp Proto
-		msgId := whatsmeow.GenerateMessageID()
-		msgContent := &waproto.Message{
-			ExtendedTextMessage: &waproto.ExtendedTextMessage{
-				Text: proto.String(response),
-				ContextInfo: &waproto.ContextInfo{
-					StanzaId:      proto.String(event.Info.ID),
-					Participant:   proto.String(remoteJID.String()),
-					QuotedMessage: event.Message,
-				},
-			},
-		}
-
-		// Send WhatsApp Message Proto
-		_, err = WhatsAppClient.SendMessage(ctx, remoteJID, msgId, msgContent)
-		if err != nil {
-			return "", err
-		}
-
-		return msgId, nil
 	}
 
 	// Return Error WhatsApp Client is not Valid
@@ -345,8 +283,20 @@ func WhatsAppHandler(event interface{}) {
 		var response string
 
 		if evt.Info.MediaType == "" {
-			realRJID := evt.Info.Sender.User
-			maskRJID := realRJID[0:len(realRJID)-4] + "xxxx"
+			realRJID := evt.Info.Chat.String()
+
+			var maskRJID string
+			if strings.ContainsRune(realRJID, '-') {
+				splitRJID := strings.Split(realRJID, "-")
+
+				realRJID = splitRJID[0]
+				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "-" + splitRJID[1]
+			} else {
+				splitRJID := strings.Split(realRJID, "@")
+
+				realRJID = splitRJID[0]
+				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
+			}
 
 			if realRJID != WhatsAppClient.Store.ID.User {
 				rMessage := strings.TrimSpace(evt.Message.GetConversation())

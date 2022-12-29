@@ -14,7 +14,7 @@ func ReloadDatastore() {
 	}
 
 	for _, device := range devices {
-		realJID := pkgWhatsApp.WhatsAppDecomposeJID(device.ID.User)
+		realJID := device.ID.User
 		maskJID := realJID[0:len(realJID)-4] + "xxxx"
 
 		log.Println(log.LogLevelInfo, "Restoring WhatsApp Client Connection for "+maskJID)
