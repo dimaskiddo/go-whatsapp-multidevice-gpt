@@ -279,7 +279,7 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 func WhatsAppHandler(event interface{}) {
 	switch evt := event.(type) {
 	case *events.Message:
-		if evt.Message.GetConversation() != "" {
+		if evt.Info.MediaType != "" {
 			realRJID := evt.Info.Chat.String()
 
 			var maskRJID string
@@ -295,7 +295,7 @@ func WhatsAppHandler(event interface{}) {
 				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
 			}
 
-			rMessage := strings.TrimSpace(evt.Message.GetConversation())
+			rMessage := strings.TrimSpace(*evt.Message.Conversation)
 
 			if strings.Contains(rMessage, chatGPTTag+" ") {
 				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
