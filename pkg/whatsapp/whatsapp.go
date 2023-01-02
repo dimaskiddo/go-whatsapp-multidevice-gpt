@@ -279,7 +279,7 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 func WhatsAppHandler(event interface{}) {
 	switch evt := event.(type) {
 	case *events.Message:
-		if evt.Info.MediaType != "" {
+		if evt.Info.MediaType == "" {
 			realRJID := evt.Info.Chat.String()
 
 			var maskRJID string
