@@ -2,6 +2,8 @@ package gpt
 
 import (
 	"context"
+	"errors"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -90,7 +92,7 @@ func GPTResponse(question string) (response string, err error) {
 		Prompt:           question,
 	}
 
-	gptResponse, err := OpenAI.CreateCompletion(
+	gptResponse, err := OpenAI.CreateCompletionStream(
 		context.Background(),
 		gptRequest,
 	)
@@ -98,18 +100,35 @@ func GPTResponse(question string) (response string, err error) {
 	if err != nil {
 		return "", err
 	}
+	defer gptResponse.Close()
 
-	buffResponse := strings.TrimSpace(gptResponse.Choices[0].Text)
+	gptResponseWordCount := 0
+	gptResponseBuilder := strings.Builder{}
+
+	for {
+		gptResponseStream, err := gptResponse.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+
+		if len(gptResponseStream.Choices) > 0 {
+			if gptResponseWordCount == 0 {
+				gptResponseBuilder.WriteString(strings.TrimLeft(gptResponseStream.Choices[0].Text, "\n"))
+			} else {
+				gptResponseBuilder.WriteString(gptResponseStream.Choices[0].Text)
+			}
+
+			gptResponseWordCount++
+		}
+	}
+
+	buffResponse := strings.TrimSpace(gptResponseBuilder.String())
 	buffResponse = strings.TrimLeft(buffResponse, "?\n")
 	buffResponse = strings.TrimLeft(buffResponse, "!\n")
 	buffResponse = strings.TrimLeft(buffResponse, ":\n")
 	buffResponse = strings.TrimLeft(buffResponse, "'\n")
 	buffResponse = strings.TrimLeft(buffResponse, ".\n")
 	buffResponse = strings.TrimLeft(buffResponse, "\n")
-
-	if bool(blockedWord.MatchString(strings.ToLower(buffResponse))) {
-		return "Cannot response to this question due to it contains blocked word 🥺", nil
-	}
 
 	return buffResponse, nil
 }
