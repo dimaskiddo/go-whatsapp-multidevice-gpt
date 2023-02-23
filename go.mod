@@ -3,10 +3,10 @@ module github.com/dimaskiddo/go-whatsapp-multidevice-gpt
 go 1.17
 
 require (
-	github.com/PullRequestInc/go-gpt3 v1.1.10
 	github.com/joho/godotenv v1.3.0
 	github.com/lib/pq v1.10.6
 	github.com/mdp/qrterminal/v3 v3.0.0
+	github.com/sashabaranov/go-gpt3 v1.2.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.6.1
 	go.mau.fi/whatsmeow v0.0.0-20221122081206-059049466d44

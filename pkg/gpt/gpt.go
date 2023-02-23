@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	gpt3 "github.com/PullRequestInc/go-gpt3"
+	gpt "github.com/sashabaranov/go-gpt3"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/env"
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 )
 
-var OpenAI gpt3.Client
+var OpenAI *gpt.Client
 
 var gptModelName string
 var gptModelToken int
@@ -64,13 +64,13 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Penalty Frequency")
 	}
 
-	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex"
+	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex|masturbate|masturbasi|cock|penis|kontol|vagina|memek|porn|porno|coli"
 	envBlockedWord := strings.TrimSpace(os.Getenv("CHATGPT_BLOCKED_WORD"))
 	if len(envBlockedWord) > 0 {
 		gptBlockedWord = gptBlockedWord + "|" + envBlockedWord
 	}
 
-	OpenAI = gpt3.NewClient(gptAPIKey)
+	OpenAI = gpt.NewClient(gptAPIKey)
 }
 
 func GPTResponse(question string) (response string, err error) {
@@ -80,17 +80,19 @@ func GPTResponse(question string) (response string, err error) {
 		return "Cannot response to this question due to it contains blocked word 🥺", nil
 	}
 
-	gptResponse, err := OpenAI.CompletionWithEngine(
+	gptRequest := gpt.CompletionRequest{
+		Model:            gptModelName,
+		MaxTokens:        gptModelToken,
+		Temperature:      gptModelTemprature,
+		TopP:             gptModelTopP,
+		PresencePenalty:  gptModelPenaltyPresence,
+		FrequencyPenalty: gptModelPenaltyFreq,
+		Prompt:           question,
+	}
+
+	gptResponse, err := OpenAI.CreateCompletion(
 		context.Background(),
-		gptModelName,
-		gpt3.CompletionRequest{
-			Prompt:           []string{question},
-			MaxTokens:        gpt3.IntPtr(gptModelToken),
-			Temperature:      gpt3.Float32Ptr(gptModelTemprature),
-			TopP:             gpt3.Float32Ptr(gptModelTopP),
-			PresencePenalty:  *gpt3.Float32Ptr(gptModelPenaltyPresence),
-			FrequencyPenalty: *gpt3.Float32Ptr(gptModelPenaltyFreq),
-		},
+		gptRequest,
 	)
 
 	if err != nil {
