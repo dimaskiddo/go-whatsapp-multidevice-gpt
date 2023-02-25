@@ -295,24 +295,28 @@ func WhatsAppHandler(event interface{}) {
 				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
 			}
 
-			rMessage := strings.TrimSpace(*evt.Message.Conversation)
+			rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
 			if strings.Contains(rMessage, chatGPTTag+" ") {
 				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
 				question := strings.TrimSpace(splitByTag[1])
 
-				log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
-				log.Println(log.LogLevelInfo, "From     : "+maskRJID)
-				log.Println(log.LogLevelInfo, "Question : "+question)
+				if len(strings.TrimSpace(question)) > 0 {
+					log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
+					log.Println(log.LogLevelInfo, "From     : "+maskRJID)
+					log.Println(log.LogLevelInfo, "Question : "+question)
 
-				response, err := gpt.GPTResponse(question)
-				if err != nil {
-					response = "Failed to Get Response, Got Timeout from OpenAI GPT 🙈"
-				}
+					response, err := gpt.GPTResponse(question)
+					if err != nil {
+						response = "Failed to Get Response, Got Timeout from OpenAI GPT 🙈"
+					}
 
-				_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
-				if err != nil {
-					log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
+					if len(strings.TrimSpace(response)) > 0 {
+						_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
+						if err != nil {
+							log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
+						}
+					}
 				}
 			}
 		}

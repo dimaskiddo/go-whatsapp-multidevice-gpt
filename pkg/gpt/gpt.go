@@ -66,7 +66,7 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Penalty Frequency")
 	}
 
-	gptBlockedWord = "🏳️|🏳️‍🌈|🌈|lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex|masturbate|masturbasi|cock|penis|kontol|vagina|memek|porn|porno|coli"
+	gptBlockedWord = "lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex|masturbate|masturbasi|coli|colmek|jilmek|cock|penis|kontol|vagina|memek|porn|porno"
 	envBlockedWord := strings.TrimSpace(os.Getenv("CHATGPT_BLOCKED_WORD"))
 	if len(envBlockedWord) > 0 {
 		gptBlockedWord = gptBlockedWord + "|" + envBlockedWord
@@ -102,7 +102,7 @@ func GPTResponse(question string) (response string, err error) {
 	}
 	defer gptResponse.Close()
 
-	gptResponseWordCount := 0
+	gptResponseWordPosition := 0
 	gptResponseBuilder := strings.Builder{}
 
 	for {
@@ -112,13 +112,13 @@ func GPTResponse(question string) (response string, err error) {
 		}
 
 		if len(gptResponseStream.Choices) > 0 {
-			if gptResponseWordCount == 0 {
+			if gptResponseWordPosition == 0 {
 				gptResponseBuilder.WriteString(strings.TrimLeft(gptResponseStream.Choices[0].Text, "\n"))
 			} else {
 				gptResponseBuilder.WriteString(gptResponseStream.Choices[0].Text)
 			}
 
-			gptResponseWordCount++
+			gptResponseWordPosition++
 		}
 	}
 
