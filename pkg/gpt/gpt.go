@@ -119,12 +119,6 @@ func GPT3Response(question string) (response string, err error) {
 
 			if len(gptResponseStream.Choices) > 0 {
 				gptWordResponse := gptResponseStream.Choices[0].Delta.Content
-				gptWordResponse = strings.TrimLeft(gptWordResponse, "?\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, "!\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, ":\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, "'\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, ".\n")
-
 				if !gptIsFirstWordFound && gptWordResponse != "\n" && len(strings.TrimSpace(gptWordResponse)) != 0 {
 					gptIsFirstWordFound = true
 				}
@@ -163,12 +157,6 @@ func GPT3Response(question string) (response string, err error) {
 
 			if len(gptResponseStream.Choices) > 0 {
 				gptWordResponse := gptResponseStream.Choices[0].Text
-				gptWordResponse = strings.TrimLeft(gptWordResponse, "?\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, "!\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, ":\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, "'\n")
-				gptWordResponse = strings.TrimLeft(gptWordResponse, ".\n")
-
 				if !gptIsFirstWordFound && gptWordResponse != "\n" && len(strings.TrimSpace(gptWordResponse)) != 0 {
 					gptIsFirstWordFound = true
 				}
@@ -184,8 +172,13 @@ func GPT3Response(question string) (response string, err error) {
 		return "Sorry, the AI can not response for this time. Please try again after a few moment. Thank you ! 🙈", nil
 	}
 
-	gptResponseBuffer := strings.TrimLeft(gptResponseBuilder.String(), "\n")
-	gptResponseBuffer = strings.TrimSpace(gptResponseBuffer)
+	gptResponseBuffer := strings.TrimSpace(gptResponseBuilder.String())
+	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "?\n")
+	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "!\n")
+	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, ":\n")
+	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "'\n")
+	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, ".\n")
+	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "\n")
 
 	return gptResponseBuffer, nil
 }
