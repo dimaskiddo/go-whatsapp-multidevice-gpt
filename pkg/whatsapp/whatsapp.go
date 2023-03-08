@@ -42,10 +42,11 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
 	}
 
-	WAOAIGPTTag, err = strings.ToLower(env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG"))
+	WAOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
 	}
+	WAOAIGPTTag = strings.ToLower(WAOAIGPTTag)
 
 	WhatsAppDatastore = datastore
 }
