@@ -20,7 +20,7 @@ var gptModelName string
 var gptModelToken int
 
 var (
-	gptModelTemprature,
+	gptModelTemperature,
 	gptModelTopP,
 	gptModelPenaltyPresence,
 	gptModelPenaltyFreq float32
@@ -46,9 +46,9 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Token")
 	}
 
-	gptModelTemprature, err = env.GetEnvFloat32("CHATGPT_MODEL_TEMPRATURE")
+	gptModelTemperature, err = env.GetEnvFloat32("CHATGPT_MODEL_TEMPERATURE")
 	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Temprature")
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for ChatGPT Model Temperature")
 	}
 
 	gptModelTopP, err = env.GetEnvFloat32("CHATGPT_MODEL_TOP_P")
@@ -85,7 +85,7 @@ func GPT3Response(question string) (response string, err error) {
 	gptRequest := OpenAI.ChatCompletionRequest{
 		Model:            gptModelName,
 		MaxTokens:        gptModelToken,
-		Temperature:      gptModelTemprature,
+		Temperature:      gptModelTemperature,
 		TopP:             gptModelTopP,
 		PresencePenalty:  gptModelPenaltyPresence,
 		FrequencyPenalty: gptModelPenaltyFreq,
