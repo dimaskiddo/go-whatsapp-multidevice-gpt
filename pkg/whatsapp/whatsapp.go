@@ -297,7 +297,7 @@ func WhatsAppHandler(event interface{}) {
 
 			rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
-			if strings.Contains(rMessage, chatGPTTag+" ") {
+			if strings.Contains(strings.ToLower(rMessage), strings.ToLower(chatGPTTag+" ")) {
 				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
 				question := strings.TrimSpace(splitByTag[1])
 
