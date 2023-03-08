@@ -306,7 +306,7 @@ func WhatsAppHandler(event interface{}) {
 					log.Println(log.LogLevelInfo, "From     : "+maskRJID)
 					log.Println(log.LogLevelInfo, "Question : "+question)
 
-					response, err := gpt.GPTResponse(question)
+					response, err := gpt.GPT3Response(question)
 					if err != nil {
 						response = "Failed to Get Response, Got Timeout from OpenAI GPT 🙈"
 					}

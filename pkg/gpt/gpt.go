@@ -8,13 +8,13 @@ import (
 	"regexp"
 	"strings"
 
-	gpt "github.com/sashabaranov/go-gpt3"
+	OpenAI "github.com/sashabaranov/go-openai"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/env"
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 )
 
-var OpenAI *gpt.Client
+var OAIClient *OpenAI.Client
 
 var gptModelName string
 var gptModelToken int
@@ -72,27 +72,32 @@ func init() {
 		gptBlockedWord = gptBlockedWord + "|" + envBlockedWord
 	}
 
-	OpenAI = gpt.NewClient(gptAPIKey)
+	OAIClient = OpenAI.NewClient(gptAPIKey)
 }
 
-func GPTResponse(question string) (response string, err error) {
+func GPT3Response(question string) (response string, err error) {
 	blockedWord := regexp.MustCompile(strings.ToLower(gptBlockedWord))
 
 	if bool(blockedWord.MatchString(strings.ToLower(question))) {
 		return "Cannot response to this question due to it contains blocked word 🥺", nil
 	}
 
-	gptRequest := gpt.CompletionRequest{
+	gptRequest := OpenAI.ChatCompletionRequest{
 		Model:            gptModelName,
 		MaxTokens:        gptModelToken,
 		Temperature:      gptModelTemprature,
 		TopP:             gptModelTopP,
 		PresencePenalty:  gptModelPenaltyPresence,
 		FrequencyPenalty: gptModelPenaltyFreq,
-		Prompt:           question,
+		Messages: []OpenAI.ChatCompletionMessage{
+			{
+				Role:    OpenAI.ChatMessageRoleUser,
+				Content: question,
+			},
+		},
 	}
 
-	gptResponse, err := OpenAI.CreateCompletionStream(
+	gptResponse, err := OAIClient.CreateChatCompletionStream(
 		context.Background(),
 		gptRequest,
 	)
@@ -102,8 +107,8 @@ func GPTResponse(question string) (response string, err error) {
 	}
 	defer gptResponse.Close()
 
-	gptResponseWordPosition := 0
 	gptResponseBuilder := strings.Builder{}
+	gptIsFirstWordFound := false
 
 	for {
 		gptResponseStream, err := gptResponse.Recv()
@@ -112,23 +117,28 @@ func GPTResponse(question string) (response string, err error) {
 		}
 
 		if len(gptResponseStream.Choices) > 0 {
-			if gptResponseWordPosition == 0 {
-				gptResponseBuilder.WriteString(strings.TrimLeft(gptResponseStream.Choices[0].Text, "\n"))
-			} else {
-				gptResponseBuilder.WriteString(gptResponseStream.Choices[0].Text)
+			gptWordResponse := gptResponseStream.Choices[0].Delta.Content
+			if !gptIsFirstWordFound && gptWordResponse != "\n" && len(strings.TrimSpace(gptWordResponse)) != 0 {
+				gptIsFirstWordFound = true
 			}
 
-			gptResponseWordPosition++
+			if gptIsFirstWordFound {
+				gptResponseBuilder.WriteString(gptResponseStream.Choices[0].Delta.Content)
+			}
 		}
 	}
 
-	buffResponse := strings.TrimSpace(gptResponseBuilder.String())
-	buffResponse = strings.TrimLeft(buffResponse, "?\n")
-	buffResponse = strings.TrimLeft(buffResponse, "!\n")
-	buffResponse = strings.TrimLeft(buffResponse, ":\n")
-	buffResponse = strings.TrimLeft(buffResponse, "'\n")
-	buffResponse = strings.TrimLeft(buffResponse, ".\n")
-	buffResponse = strings.TrimLeft(buffResponse, "\n")
+	if !gptIsFirstWordFound {
+		return "Sorry, can't response this question for this time. Please try again after a few moment. Thank you !", nil
+	}
 
-	return buffResponse, nil
+	gptResponseCleaner := strings.TrimSpace(gptResponseBuilder.String())
+	gptResponseCleaner = strings.TrimLeft(gptResponseCleaner, "?\n")
+	gptResponseCleaner = strings.TrimLeft(gptResponseCleaner, "!\n")
+	gptResponseCleaner = strings.TrimLeft(gptResponseCleaner, ":\n")
+	gptResponseCleaner = strings.TrimLeft(gptResponseCleaner, "'\n")
+	gptResponseCleaner = strings.TrimLeft(gptResponseCleaner, ".\n")
+	gptResponseCleaner = strings.TrimLeft(gptResponseCleaner, "\n")
+
+	return gptResponseCleaner, nil
 }
