@@ -42,7 +42,7 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
 	}
 
-	WAOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
+	WAOAIGPTTag, err = strings.ToLower(env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG"))
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
 	}
@@ -295,13 +295,13 @@ func WhatsAppHandler(event interface{}) {
 				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
 			}
 
-			rMessage := strings.TrimSpace(evt.Message.GetConversation())
+			rMessage := strings.TrimSpace(strings.ToLower(evt.Message.GetConversation()))
 
-			if strings.Contains(strings.ToLower(rMessage), strings.ToLower(WAOAIGPTTag+" ")) {
+			if strings.Contains(rMessage, WAOAIGPTTag+" ") {
 				splitByTag := strings.SplitN(rMessage, WAOAIGPTTag+" ", 2)
 				question := strings.TrimSpace(splitByTag[1])
 
-				if len(strings.TrimSpace(question)) > 0 {
+				if len(question) > 0 {
 					log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
 					log.Println(log.LogLevelInfo, "From     : "+maskRJID)
 					log.Println(log.LogLevelInfo, "Question : "+question)
@@ -311,11 +311,9 @@ func WhatsAppHandler(event interface{}) {
 						response = "Sorry, the AI can not response for this time. Please try again after a few moment. Thank you ! 🙈"
 					}
 
-					if len(strings.TrimSpace(response)) > 0 {
-						_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
-						if err != nil {
-							log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
-						}
+					_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
+					if err != nil {
+						log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
 					}
 				}
 			}
