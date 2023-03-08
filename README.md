@@ -26,7 +26,8 @@ Optional packages:
 2) Run the following command on your Terminal or PowerShell
 ```sh
 docker run -d \
-  -e CHATGPT_API_KEY=<OPENAI_API_KEY> \
+  -e OPENAI_API_KEY=<OPENAI_API_KEY> \
+  -e WHATSAPP_OPENAI_GPT_TAG="#askme" \
   --name go-whatsapp-multidevice-gpt \
   --rm dimaskiddo/go-whatsapp-multidevice-gpt:latest
 ```

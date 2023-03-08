@@ -22,7 +22,7 @@ import (
 var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient *whatsmeow.Client
 
-var chatGPTTag string
+var WAOAIGPTTag string
 
 func init() {
 	var err error
@@ -42,9 +42,9 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
 	}
 
-	chatGPTTag, err = env.GetEnvString("WHATSAPP_CHATGPT_TAG")
+	WAOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
 	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client ChatGPT Tag")
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
 	}
 
 	WhatsAppDatastore = datastore
@@ -297,8 +297,8 @@ func WhatsAppHandler(event interface{}) {
 
 			rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
-			if strings.Contains(strings.ToLower(rMessage), strings.ToLower(chatGPTTag+" ")) {
-				splitByTag := strings.Split(rMessage, chatGPTTag+" ")
+			if strings.Contains(strings.ToLower(rMessage), strings.ToLower(WAOAIGPTTag+" ")) {
+				splitByTag := strings.SplitN(rMessage, WAOAIGPTTag+" ", 2)
 				question := strings.TrimSpace(splitByTag[1])
 
 				if len(strings.TrimSpace(question)) > 0 {
@@ -308,7 +308,7 @@ func WhatsAppHandler(event interface{}) {
 
 					response, err := gpt.GPT3Response(question)
 					if err != nil {
-						response = "Failed to Get Response, Got Timeout from OpenAI GPT 🙈"
+						response = "Sorry, the AI can not response for this time. Please try again after a few moment. Thank you ! 🙈"
 					}
 
 					if len(strings.TrimSpace(response)) > 0 {
