@@ -84,7 +84,7 @@ func GPT3Response(question string) (response string, err error) {
 		return "Cannot response to this question due to it contains blocked word 🥺", nil
 	}
 
-	gptChatMode := regexp.MustCompile(strings.ToLower("gpt-3.5-turbo"))
+	gptChatMode := regexp.MustCompile(strings.ToLower("gpt-3.5"))
 	if bool(gptChatMode.MatchString(strings.ToLower(OAIGPTModelName))) {
 		gptRequest := OpenAI.ChatCompletionRequest{
 			Model:            OAIGPTModelName,

@@ -3,6 +3,7 @@ package whatsapp
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -22,7 +23,8 @@ import (
 var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient *whatsmeow.Client
 
-var WAOAIGPTTag string
+var WhatsAppOAIGPTTag string
+var WhatsAppOAIGPTRegex *regexp.Regexp
 
 func init() {
 	var err error
@@ -42,11 +44,13 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
 	}
 
-	WAOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
+	WhatsAppOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
 	}
-	WAOAIGPTTag = strings.ToLower(WAOAIGPTTag)
+
+	WhatsAppOAIGPTTag = strings.TrimSpace(strings.ToLower(WhatsAppOAIGPTTag))
+	WhatsAppOAIGPTRegex = regexp.MustCompile("(?i)" + WhatsAppOAIGPTTag + " ")
 
 	WhatsAppDatastore = datastore
 }
@@ -280,27 +284,28 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 func WhatsAppHandler(event interface{}) {
 	switch evt := event.(type) {
 	case *events.Message:
-		if evt.Info.MediaType == "" {
-			realRJID := evt.Info.Chat.String()
+		realRJID := evt.Info.Chat.String()
 
-			var maskRJID string
-			if strings.ContainsRune(realRJID, '-') {
-				splitRJID := strings.Split(realRJID, "-")
+		var maskRJID string
+		if strings.ContainsRune(realRJID, '-') {
+			splitRJID := strings.Split(realRJID, "-")
 
-				realRJID = splitRJID[0]
-				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "-" + splitRJID[1]
-			} else {
-				splitRJID := strings.Split(realRJID, "@")
+			realRJID = splitRJID[0]
+			maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "-" + splitRJID[1]
+		} else {
+			splitRJID := strings.Split(realRJID, "@")
 
-				realRJID = splitRJID[0]
-				maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
-			}
+			realRJID = splitRJID[0]
+			maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
+		}
 
-			rMessage := strings.TrimSpace(strings.ToLower(evt.Message.GetConversation()))
+		rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
-			if strings.Contains(rMessage, WAOAIGPTTag+" ") {
-				splitByTag := strings.SplitN(rMessage, WAOAIGPTTag+" ", 2)
-				question := strings.TrimSpace(splitByTag[1])
+		if bool(WhatsAppOAIGPTRegex.MatchString(rMessage)) {
+			rMessageSplit := WhatsAppOAIGPTRegex.Split(rMessage, 2)
+
+			if len(rMessageSplit) == 2 {
+				question := strings.TrimSpace(rMessageSplit[1])
 
 				if len(question) > 0 {
 					log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
