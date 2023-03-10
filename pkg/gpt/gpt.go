@@ -66,10 +66,10 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Penalty Frequency")
 	}
 
-	OAIGPTBlockedWord = "lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex|masturbate|masturbasi|coli|colmek|jilmek|cock|penis|kontol|vagina|memek|porn|porno"
+	OAIGPTBlockedWord = "lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex|ngentot|entot|ngewe|ewe|masturbate|masturbasi|coli|colmek|jilmek|cock|penis|kontol|vagina|memek|porn|porno|bokep"
 	envBlockedWord := strings.TrimSpace(os.Getenv("OPENAI_GPT_BLOCKED_WORD"))
 	if len(envBlockedWord) > 0 {
-		OAIGPTBlockedWord = OAIGPTBlockedWord + "|" + envBlockedWord
+		OAIGPTBlockedWord = "\\b(?i)(" + OAIGPTBlockedWord + "|" + envBlockedWord + ")"
 	}
 
 	OAIClient = OpenAI.NewClient(OAIAPIKey)
@@ -79,13 +79,13 @@ func GPT3Response(question string) (response string, err error) {
 	gptResponseBuilder := strings.Builder{}
 	gptIsFirstWordFound := false
 
-	gptBlockedWord := regexp.MustCompile(strings.ToLower(OAIGPTBlockedWord))
-	if bool(gptBlockedWord.MatchString(strings.ToLower(question))) {
-		return "Cannot response to this question due to it contains blocked word 🥺", nil
+	gptBlockedWord := regexp.MustCompile(OAIGPTBlockedWord)
+	if bool(gptBlockedWord.MatchString(question)) {
+		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
 	}
 
-	gptChatMode := regexp.MustCompile(strings.ToLower("gpt-3.5"))
-	if bool(gptChatMode.MatchString(strings.ToLower(OAIGPTModelName))) {
+	gptChatMode := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
+	if bool(gptChatMode.MatchString(OAIGPTModelName)) {
 		gptRequest := OpenAI.ChatCompletionRequest{
 			Model:            OAIGPTModelName,
 			MaxTokens:        OAIGPTModelToken,
@@ -169,7 +169,7 @@ func GPT3Response(question string) (response string, err error) {
 	}
 
 	if !gptIsFirstWordFound {
-		return "Sorry, the AI can not response for this time. Please try again after a few moment. Thank you ! 🙈", nil
+		return "Sorry, the AI can not response for this time. Please try again after a few moment 🥺", nil
 	}
 
 	gptResponseBuffer := strings.TrimSpace(gptResponseBuilder.String())

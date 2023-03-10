@@ -50,7 +50,7 @@ func init() {
 	}
 
 	WhatsAppOAIGPTTag = strings.TrimSpace(strings.ToLower(WhatsAppOAIGPTTag))
-	WhatsAppOAIGPTRegex = regexp.MustCompile("(?i)" + WhatsAppOAIGPTTag + " ")
+	WhatsAppOAIGPTRegex = regexp.MustCompile("\\b(?i)(" + WhatsAppOAIGPTTag + " " + ")")
 
 	WhatsAppDatastore = datastore
 }
