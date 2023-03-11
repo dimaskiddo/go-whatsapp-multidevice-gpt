@@ -314,7 +314,7 @@ func WhatsAppHandler(event interface{}) {
 
 					response, err := gpt.GPT3Response(question)
 					if err != nil {
-						response = "Sorry, the AI can not response for this time. Please try again after a few moment. Thank you ! 🙈"
+						response = "Sorry, the AI can not response for this time. Please try again after a few moment 🥺"
 					}
 
 					_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)

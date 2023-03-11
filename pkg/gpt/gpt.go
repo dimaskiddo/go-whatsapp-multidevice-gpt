@@ -16,7 +16,11 @@ import (
 
 var OAIClient *OpenAI.Client
 
-var OAIGPTModelName string
+var (
+	OAIGPTModelName,
+	OAIGPTBlockedWord string
+)
+
 var OAIGPTModelToken int
 
 var (
@@ -26,7 +30,12 @@ var (
 	OAIGPTModelPenaltyFreq float32
 )
 
-var OAIGPTBlockedWord string
+var OAIGPTBlockedWordRegex *regexp.Regexp
+
+const listBlockedWord string = "" +
+	"lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|" +
+	"fuck|sex|ngentot|entot|ngewe|ewe|masturbate|masturbasi|coli|colmek|jilmek|" +
+	"cock|penis|kontol|vagina|memek|porn|porno|bokep"
 
 func init() {
 	var err error
@@ -66,23 +75,23 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Penalty Frequency")
 	}
 
-	OAIGPTBlockedWord = "lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|fuck|sex|ngentot|entot|ngewe|ewe|masturbate|masturbasi|coli|colmek|jilmek|cock|penis|kontol|vagina|memek|porn|porno|bokep"
-	envBlockedWord := strings.TrimSpace(os.Getenv("OPENAI_GPT_BLOCKED_WORD"))
-	if len(envBlockedWord) > 0 {
-		OAIGPTBlockedWord = "\\b(?i)(" + OAIGPTBlockedWord + "|" + envBlockedWord + ")"
+	OAIGPTBlockedWord = strings.TrimSpace(os.Getenv("OPENAI_GPT_BLOCKED_WORD"))
+	if len(OAIGPTBlockedWord) > 0 {
+		OAIGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + "|" + OAIGPTBlockedWord + ")")
+	} else {
+		OAIGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + ")")
 	}
 
 	OAIClient = OpenAI.NewClient(OAIAPIKey)
 }
 
 func GPT3Response(question string) (response string, err error) {
-	gptResponseBuilder := strings.Builder{}
-	gptIsFirstWordFound := false
-
-	gptBlockedWord := regexp.MustCompile(OAIGPTBlockedWord)
-	if bool(gptBlockedWord.MatchString(question)) {
+	if bool(OAIGPTBlockedWordRegex.MatchString(question)) {
 		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
 	}
+
+	gptResponseBuilder := strings.Builder{}
+	gptIsFirstWordFound := false
 
 	gptChatMode := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
 	if bool(gptChatMode.MatchString(OAIGPTModelName)) {
@@ -179,6 +188,10 @@ func GPT3Response(question string) (response string, err error) {
 	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "'\n")
 	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, ".\n")
 	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "\n")
+
+	if bool(OAIGPTBlockedWordRegex.MatchString(gptResponseBuffer)) {
+		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
+	}
 
 	return gptResponseBuffer, nil
 }
