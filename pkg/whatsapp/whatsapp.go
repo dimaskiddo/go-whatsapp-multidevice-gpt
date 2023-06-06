@@ -246,7 +246,9 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 
 			// Compose WhatsApp Proto
 			var msgContent *waproto.Message
-			msgId := whatsmeow.GenerateMessageID()
+			msgExtra := whatsmeow.SendRequestExtra{
+				ID: whatsmeow.GenerateMessageID(),
+			}
 
 			if strings.ContainsRune(rJID.String(), '-') {
 				msgContent = &waproto.Message{
@@ -266,12 +268,12 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 			}
 
 			// Send WhatsApp Message Proto
-			_, err = WhatsAppClient.SendMessage(ctx, rJID, msgId, msgContent)
+			_, err = WhatsAppClient.SendMessage(ctx, rJID, msgContent, msgExtra)
 			if err != nil {
 				return "", err
 			}
 
-			return msgId, nil
+			return msgExtra.ID, nil
 		} else {
 			return "", errors.New("WhatsApp Client is not Connected or Logged-in")
 		}

@@ -2,8 +2,6 @@ package gpt
 
 import (
 	"context"
-	"errors"
-	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -90,7 +88,7 @@ func GPT3Response(question string) (response string, err error) {
 		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
 	}
 
-	gptResponseBuilder := strings.Builder{}
+	var gptResponseText string
 	gptIsFirstWordFound := false
 
 	gptChatMode := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
@@ -110,7 +108,7 @@ func GPT3Response(question string) (response string, err error) {
 			},
 		}
 
-		gptResponse, err := OAIClient.CreateChatCompletionStream(
+		gptResponse, err := OAIClient.CreateChatCompletion(
 			context.Background(),
 			gptRequest,
 		)
@@ -118,24 +116,9 @@ func GPT3Response(question string) (response string, err error) {
 		if err != nil {
 			return "", err
 		}
-		defer gptResponse.Close()
 
-		for {
-			gptResponseStream, err := gptResponse.Recv()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
-			if len(gptResponseStream.Choices) > 0 {
-				gptWordResponse := gptResponseStream.Choices[0].Delta.Content
-				if !gptIsFirstWordFound && gptWordResponse != "\n" && len(strings.TrimSpace(gptWordResponse)) != 0 {
-					gptIsFirstWordFound = true
-				}
-
-				if gptIsFirstWordFound {
-					gptResponseBuilder.WriteString(gptResponseStream.Choices[0].Delta.Content)
-				}
-			}
+		if len(gptResponse.Choices) > 0 {
+			gptResponseText = gptResponse.Choices[0].Message.Content
 		}
 	} else {
 		gptRequest := OpenAI.CompletionRequest{
@@ -148,7 +131,7 @@ func GPT3Response(question string) (response string, err error) {
 			Prompt:           question,
 		}
 
-		gptResponse, err := OAIClient.CreateCompletionStream(
+		gptResponse, err := OAIClient.CreateCompletion(
 			context.Background(),
 			gptRequest,
 		)
@@ -156,24 +139,9 @@ func GPT3Response(question string) (response string, err error) {
 		if err != nil {
 			return "", err
 		}
-		defer gptResponse.Close()
 
-		for {
-			gptResponseStream, err := gptResponse.Recv()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
-			if len(gptResponseStream.Choices) > 0 {
-				gptWordResponse := gptResponseStream.Choices[0].Text
-				if !gptIsFirstWordFound && gptWordResponse != "\n" && len(strings.TrimSpace(gptWordResponse)) != 0 {
-					gptIsFirstWordFound = true
-				}
-
-				if gptIsFirstWordFound {
-					gptResponseBuilder.WriteString(gptResponseStream.Choices[0].Text)
-				}
-			}
+		if len(gptResponse.Choices) > 0 {
+			gptResponseText = gptResponse.Choices[0].Text
 		}
 	}
 
@@ -181,7 +149,7 @@ func GPT3Response(question string) (response string, err error) {
 		return "Sorry, the AI can not response for this time. Please try again after a few moment 🥺", nil
 	}
 
-	gptResponseBuffer := strings.TrimSpace(gptResponseBuilder.String())
+	gptResponseBuffer := strings.TrimSpace(gptResponseText)
 	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "?\n")
 	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "!\n")
 	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, ":\n")
