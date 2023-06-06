@@ -89,7 +89,6 @@ func GPT3Response(question string) (response string, err error) {
 	}
 
 	var gptResponseText string
-	gptIsFirstWordFound := false
 
 	gptChatMode := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
 	if bool(gptChatMode.MatchString(OAIGPTModelName)) {
@@ -143,10 +142,6 @@ func GPT3Response(question string) (response string, err error) {
 		if len(gptResponse.Choices) > 0 {
 			gptResponseText = gptResponse.Choices[0].Text
 		}
-	}
-
-	if !gptIsFirstWordFound {
-		return "Sorry, the AI can not response for this time. Please try again after a few moment 🥺", nil
 	}
 
 	gptResponseBuffer := strings.TrimSpace(gptResponseText)
