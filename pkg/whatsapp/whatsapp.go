@@ -316,6 +316,7 @@ func WhatsAppHandler(event interface{}) {
 
 					response, err := gpt.GPT3Response(question)
 					if err != nil {
+						log.Println(log.LogLevelError, err.Error())
 						response = "Sorry, the AI can not response for this time. Please try again after a few moment 🥺"
 					}
 
