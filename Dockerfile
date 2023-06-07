@@ -1,6 +1,6 @@
 # Builder Image
 # ---------------------------------------------------
-FROM dimaskiddo/alpine:go-1.19 AS go-builder
+FROM dimaskiddo/debian-buster:go-1.19 AS go-builder
 
 WORKDIR /usr/src/app
 
@@ -12,7 +12,7 @@ RUN go mod download \
 
 # Final Image
 # ---------------------------------------------------
-FROM dimaskiddo/alpine:base
+FROM debian:buster-slim
 MAINTAINER Dimas Restu Hidayanto <dimas.restu@student.upi.edu>
 
 ARG SERVICE_NAME="go-whatsapp-multidevice-gpt"
