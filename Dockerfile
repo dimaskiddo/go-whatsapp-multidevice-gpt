@@ -22,7 +22,13 @@ ENV PATH $PATH:/usr/app/${SERVICE_NAME}
 WORKDIR /usr/app/${SERVICE_NAME}
 
 RUN mkdir -p dbs \
-    && chmod 775 dbs
+    && chmod 775 dbs \
+    && apt-get -y update --allow-releaseinfo-change \
+    && apt-get -y install \
+        ca-certificates \
+        ca-certificates-udeb \
+    && apt-get -y purge --autoremove \
+    && apt-get -y clean \
 COPY --from=go-builder /usr/src/app/.env.example ./.env
 COPY --from=go-builder /usr/src/app/main ./go-whatsapp-multidevice-gpt
 
