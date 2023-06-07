@@ -28,7 +28,7 @@ RUN mkdir -p dbs \
         ca-certificates \
         ca-certificates-udeb \
     && apt-get -y purge --autoremove \
-    && apt-get -y clean \
+    && apt-get -y clean
 COPY --from=go-builder /usr/src/app/.env.example ./.env
 COPY --from=go-builder /usr/src/app/main ./go-whatsapp-multidevice-gpt
 
