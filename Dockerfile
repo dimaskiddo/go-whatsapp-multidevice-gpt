@@ -26,7 +26,6 @@ RUN mkdir -p dbs \
     && apt-get -y update --allow-releaseinfo-change \
     && apt-get -y install \
         ca-certificates \
-        ca-certificates-udeb \
     && apt-get -y purge --autoremove \
     && apt-get -y clean
 COPY --from=go-builder /usr/src/app/.env.example ./.env
