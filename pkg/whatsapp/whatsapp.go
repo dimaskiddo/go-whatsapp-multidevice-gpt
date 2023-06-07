@@ -24,9 +24,10 @@ var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient *whatsmeow.Client
 
 var (
-	WhatsAppUserAgent     string
-	WhatsAppUserAgentName string
-	WhatsAppOAIGPTTag     string
+	WhatsAppClientProxyURL string
+	WhatsAppUserAgentName  string
+	WhatsAppUserAgentType  string
+	WhatsAppOAIGPTTag      string
 )
 
 var WhatsAppOAIGPTRegex *regexp.Regexp
@@ -49,14 +50,16 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
 	}
 
-	WhatsAppUserAgent, err = env.GetEnvString("WHATSAPP_USER_AGENT")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent")
-	}
+	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
 
 	WhatsAppUserAgentName, err = env.GetEnvString("WHATSAPP_USER_AGENT_NAME")
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent Name")
+	}
+
+	WhatsAppUserAgentType, err = env.GetEnvString("WHATSAPP_USER_AGENT_TYPE")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent Type")
 	}
 
 	WhatsAppOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
@@ -81,7 +84,7 @@ func WhatsAppInitClient(device *store.Device) {
 
 		// Set Client Properties
 		store.DeviceProps.Os = proto.String(WhatsAppUserAgentName)
-		store.DeviceProps.PlatformType = WhatsAppGetUserAgent(WhatsAppUserAgent).Enum()
+		store.DeviceProps.PlatformType = WhatsAppGetUserAgent(WhatsAppUserAgentType).Enum()
 		store.DeviceProps.RequireFullSync = proto.Bool(false)
 
 		// Set Client Versions
@@ -101,6 +104,11 @@ func WhatsAppInitClient(device *store.Device) {
 		// Initialize New WhatsApp Client
 		WhatsAppClient = whatsmeow.NewClient(device, nil)
 
+		// Set WhatsApp Client Proxy Address if Proxy URL is Provided
+		if len(WhatsAppClientProxyURL) > 0 {
+			WhatsAppClient.SetProxyAddress(WhatsAppClientProxyURL)
+		}
+
 		// Set WhatsApp Client Auto Reconnect
 		WhatsAppClient.EnableAutoReconnect = true
 
@@ -109,10 +117,12 @@ func WhatsAppInitClient(device *store.Device) {
 	}
 }
 
-func WhatsAppGetUserAgent(agent string) waproto.DeviceProps_PlatformType {
-	switch strings.ToLower(agent) {
+func WhatsAppGetUserAgent(agentType string) waproto.DeviceProps_PlatformType {
+	switch strings.ToLower(agentType) {
 	case "desktop":
 		return waproto.DeviceProps_DESKTOP
+	case "mac":
+		return waproto.DeviceProps_CATALINA
 	case "android":
 		return waproto.DeviceProps_ANDROID_AMBIGUOUS
 	case "android-phone":
@@ -125,6 +135,8 @@ func WhatsAppGetUserAgent(agent string) waproto.DeviceProps_PlatformType {
 		return waproto.DeviceProps_IOS_CATALYST
 	case "ipad":
 		return waproto.DeviceProps_IPAD
+	case "wearos":
+		return waproto.DeviceProps_WEAR_OS
 	case "ie":
 		return waproto.DeviceProps_IE
 	case "edge":
@@ -137,6 +149,8 @@ func WhatsAppGetUserAgent(agent string) waproto.DeviceProps_PlatformType {
 		return waproto.DeviceProps_OPERA
 	case "aloha":
 		return waproto.DeviceProps_ALOHA
+	case "tv-tcl":
+		return waproto.DeviceProps_TCL_TV
 	default:
 		return waproto.DeviceProps_UNKNOWN
 	}
@@ -176,11 +190,11 @@ func WhatsAppLogin() (string, int, error) {
 				return "", 0, err
 			}
 
-			// Set WhatsApp Client Presence to Available
-			_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
-
 			// Get Generated QR Code and Timeout Information
 			qrString, qrTimeout := WhatsAppGenerateQR(qrChanGenerate)
+
+			// Set WhatsApp Client Presence to Available
+			_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
 
 			// Print QR Code in Terminal
 			return qrString, qrTimeout, nil
@@ -290,25 +304,12 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 
 			// Compose WhatsApp Proto
 			var msgContent *waproto.Message
-			msgExtra := whatsmeow.SendRequestExtra{
-				ID: whatsmeow.GenerateMessageID(),
+			msgContent = &waproto.Message{
+				Conversation: proto.String(response),
 			}
 
-			if strings.ContainsRune(rJID.String(), '-') {
-				msgContent = &waproto.Message{
-					Conversation: proto.String(response),
-				}
-			} else {
-				msgContent = &waproto.Message{
-					ExtendedTextMessage: &waproto.ExtendedTextMessage{
-						Text: proto.String(response),
-						ContextInfo: &waproto.ContextInfo{
-							StanzaId:      proto.String(event.Info.ID),
-							Participant:   proto.String(event.Info.Sender.String()),
-							QuotedMessage: event.Message,
-						},
-					},
-				}
+			msgExtra := whatsmeow.SendRequestExtra{
+				ID: whatsmeow.GenerateMessageID(),
 			}
 
 			// Send WhatsApp Message Proto
@@ -345,7 +346,7 @@ func WhatsAppHandler(event interface{}) {
 			maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
 		}
 
-		rMessage := strings.TrimSpace(evt.Message.GetConversation())
+		rMessage := strings.TrimSpace(*evt.Message.Conversation)
 
 		if bool(WhatsAppOAIGPTRegex.MatchString(rMessage)) {
 			rMessageSplit := WhatsAppOAIGPTRegex.Split(rMessage, 2)
