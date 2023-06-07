@@ -23,7 +23,12 @@ import (
 var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient *whatsmeow.Client
 
-var WhatsAppOAIGPTTag string
+var (
+	WhatsAppUserAgent     string
+	WhatsAppUserAgentName string
+	WhatsAppOAIGPTTag     string
+)
+
 var WhatsAppOAIGPTRegex *regexp.Regexp
 
 func init() {
@@ -42,6 +47,16 @@ func init() {
 	datastore, err := sqlstore.New(dbType, dbURI, nil)
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
+	}
+
+	WhatsAppUserAgent, err = env.GetEnvString("WHATSAPP_USER_AGENT")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent")
+	}
+
+	WhatsAppUserAgentName, err = env.GetEnvString("WHATSAPP_USER_AGENT_NAME")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent Name")
 	}
 
 	WhatsAppOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
@@ -65,8 +80,8 @@ func WhatsAppInitClient(device *store.Device) {
 		}
 
 		// Set Client Properties
-		store.DeviceProps.Os = proto.String("Go WhatsApp Multi-Device GPT")
-		store.DeviceProps.PlatformType = waproto.DeviceProps_DESKTOP.Enum()
+		store.DeviceProps.Os = proto.String(WhatsAppUserAgentName)
+		store.DeviceProps.PlatformType = WhatsAppGetUserAgent(WhatsAppUserAgent).Enum()
 		store.DeviceProps.RequireFullSync = proto.Bool(false)
 
 		// Set Client Versions
@@ -91,6 +106,39 @@ func WhatsAppInitClient(device *store.Device) {
 
 		// Set WhatsApp Client Auto Trust Identity
 		WhatsAppClient.AutoTrustIdentity = true
+	}
+}
+
+func WhatsAppGetUserAgent(agent string) waproto.DeviceProps_PlatformType {
+	switch strings.ToLower(agent) {
+	case "desktop":
+		return waproto.DeviceProps_DESKTOP
+	case "android":
+		return waproto.DeviceProps_ANDROID_AMBIGUOUS
+	case "android-phone":
+		return waproto.DeviceProps_ANDROID_PHONE
+	case "andorid-tablet":
+		return waproto.DeviceProps_ANDROID_TABLET
+	case "ios-phone":
+		return waproto.DeviceProps_IOS_PHONE
+	case "ios-catalyst":
+		return waproto.DeviceProps_IOS_CATALYST
+	case "ipad":
+		return waproto.DeviceProps_IPAD
+	case "ie":
+		return waproto.DeviceProps_IE
+	case "edge":
+		return waproto.DeviceProps_EDGE
+	case "chrome":
+		return waproto.DeviceProps_CHROME
+	case "firefox":
+		return waproto.DeviceProps_FIREFOX
+	case "opera":
+		return waproto.DeviceProps_OPERA
+	case "aloha":
+		return waproto.DeviceProps_ALOHA
+	default:
+		return waproto.DeviceProps_UNKNOWN
 	}
 }
 
@@ -240,10 +288,6 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 		if WhatsAppClient.IsConnected() && WhatsAppClient.IsLoggedIn() {
 			rJID := event.Info.Chat
 
-			// Set Chat Presence
-			WhatsAppComposeStatus(rJID, true, false)
-			defer WhatsAppComposeStatus(rJID, false, false)
-
 			// Compose WhatsApp Proto
 			var msgContent *waproto.Message
 			msgExtra := whatsmeow.SendRequestExtra{
@@ -313,6 +357,10 @@ func WhatsAppHandler(event interface{}) {
 					log.Println(log.LogLevelInfo, "-== Incomming Question ==-")
 					log.Println(log.LogLevelInfo, "From     : "+maskRJID)
 					log.Println(log.LogLevelInfo, "Question : "+question)
+
+					// Set Chat Presence
+					WhatsAppComposeStatus(evt.Info.Chat, true, false)
+					defer WhatsAppComposeStatus(evt.Info.Chat, false, false)
 
 					response, err := gpt.GPT3Response(question)
 					if err != nil {
