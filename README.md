@@ -27,7 +27,7 @@ Optional packages:
 ```sh
 docker run -d \
   -e OPENAI_API_KEY=<OPENAI_API_KEY> \
-  -e WHATSAPP_OPENAI_GPT_TAG="#askme" \
+  -e WHATSAPP_OPENAI_GPT_TAG="askme" \
   --name go-whatsapp-multidevice-gpt \
   --rm dimaskiddo/go-whatsapp-multidevice-gpt:latest
 ```

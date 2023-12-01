@@ -1,11 +1,11 @@
 package cmd
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"strconv"
-	"time"
 
-	qrTerm "github.com/mdp/qrterminal/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
@@ -24,23 +24,29 @@ var Login = &cobra.Command{
 		if pkgWhatsApp.WhatsAppClient == nil {
 			pkgWhatsApp.WhatsAppInitClient(nil)
 
-			qrResponse, qrTimeout, err := pkgWhatsApp.WhatsAppLogin()
+			fmt.Println("")
+			fmt.Println("Please Insert Your Phone Number to Generate Pair Code:")
+			phoneInput := bufio.NewReader(os.Stdin)
+			fmt.Println("")
+
+			phoneNumber, err := phoneInput.ReadString('\n')
+			if err != nil {
+				log.Println(log.LogLevelError, "Failed to Get Phone Number Input!")
+			}
+
+			pairResponse, pairTimeout, err := pkgWhatsApp.WhatsAppLogin(phoneNumber)
 			if err != nil {
 				log.Println(log.LogLevelError, err.Error())
 				return
 			}
 
-			if qrResponse == "WhatsApp Client is Reconnected" {
-				log.Println(log.LogLevelInfo, qrResponse)
+			if pairResponse == "WhatsApp Client is Reconnected" {
+				log.Println(log.LogLevelInfo, pairResponse)
 				return
 			}
 
-			go func() {
-				qrTerm.Generate(qrResponse, qrTerm.L, os.Stdout)
-				log.Println(log.LogLevelInfo, "QR Code Will Be Expired in "+strconv.Itoa(qrTimeout)+"s")
-			}()
-
-			time.Sleep(time.Duration(qrTimeout) * time.Second)
+			log.Println(log.LogLevelInfo, "Successfully Generate Pair Code. Your Pair Code is "+pairResponse)
+			log.Println(log.LogLevelInfo, "Pair Code Will Be Expired in "+strconv.Itoa(pairTimeout)+"s")
 		} else {
 			log.Println(log.LogLevelInfo, "WhatsApp Client Already Logged-in")
 		}

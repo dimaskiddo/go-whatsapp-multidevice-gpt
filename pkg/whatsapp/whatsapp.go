@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -25,8 +26,6 @@ var WhatsAppClient *whatsmeow.Client
 
 var (
 	WhatsAppClientProxyURL string
-	WhatsAppUserAgentName  string
-	WhatsAppUserAgentType  string
 	WhatsAppOAIGPTTag      string
 )
 
@@ -52,16 +51,6 @@ func init() {
 
 	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
 
-	WhatsAppUserAgentName, err = env.GetEnvString("WHATSAPP_USER_AGENT_NAME")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent Name")
-	}
-
-	WhatsAppUserAgentType, err = env.GetEnvString("WHATSAPP_USER_AGENT_TYPE")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client User Agent Type")
-	}
-
 	WhatsAppOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
@@ -83,8 +72,8 @@ func WhatsAppInitClient(device *store.Device) {
 		}
 
 		// Set Client Properties
-		store.DeviceProps.Os = proto.String(WhatsAppUserAgentName)
-		store.DeviceProps.PlatformType = WhatsAppGetUserAgent(WhatsAppUserAgentType).Enum()
+		store.DeviceProps.Os = proto.String(WhatsAppGetUserOS())
+		store.DeviceProps.PlatformType = WhatsAppGetUserAgent("chrome").Enum()
 		store.DeviceProps.RequireFullSync = proto.Bool(false)
 
 		// Set Client Versions
@@ -143,10 +132,14 @@ func WhatsAppGetUserAgent(agentType string) waproto.DeviceProps_PlatformType {
 		return waproto.DeviceProps_EDGE
 	case "chrome":
 		return waproto.DeviceProps_CHROME
+	case "safari":
+		return waproto.DeviceProps_SAFARI
 	case "firefox":
 		return waproto.DeviceProps_FIREFOX
 	case "opera":
 		return waproto.DeviceProps_OPERA
+	case "uwp":
+		return waproto.DeviceProps_UWP
 	case "aloha":
 		return waproto.DeviceProps_ALOHA
 	case "tv-tcl":
@@ -156,48 +149,39 @@ func WhatsAppGetUserAgent(agentType string) waproto.DeviceProps_PlatformType {
 	}
 }
 
-func WhatsAppGenerateQR(qrChan <-chan whatsmeow.QRChannelItem) (string, int) {
-	qrChanCode := make(chan string)
-	qrChanTimeout := make(chan int)
-
-	// Get QR Code Data and Timeout
-	go func() {
-		for evt := range qrChan {
-			if evt.Event == "code" {
-				qrChanCode <- evt.Code
-				qrChanTimeout <- int(evt.Timeout.Seconds())
-			}
-		}
-	}()
-
-	// Return QR Code Data and Timeout Information
-	return <-qrChanCode, <-qrChanTimeout
+func WhatsAppGetUserOS() string {
+	switch runtime.GOOS {
+	case "windows":
+		return "Windows"
+	case "darwin":
+		return "macOS"
+	default:
+		return "Linux"
+	}
 }
 
-func WhatsAppLogin() (string, int, error) {
+func WhatsAppLogin(jid string) (string, int, error) {
 	if WhatsAppClient != nil {
 		// Make Sure WebSocket Connection is Disconnected
 		WhatsAppClient.Disconnect()
 
 		if WhatsAppClient.Store.ID == nil {
-			// Device ID is not Exist
-			// Generate QR Code
-			qrChanGenerate, _ := WhatsAppClient.GetQRChannel(context.Background())
-
-			// Connect WebSocket while Initialize QR Code Data to be Sent
+			// Connect WebSocket while also Requesting Pairing Code
 			err := WhatsAppClient.Connect()
 			if err != nil {
 				return "", 0, err
 			}
 
-			// Get Generated QR Code and Timeout Information
-			qrString, qrTimeout := WhatsAppGenerateQR(qrChanGenerate)
+			// Request Pairing Code
+			code, err := WhatsAppClient.PairPhone(jid, true, whatsmeow.PairClientChrome, "Chrome ("+WhatsAppGetUserOS()+")")
+			if err != nil {
+				return "", 0, err
+			}
 
 			// Set WhatsApp Client Presence to Available
 			_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
 
-			// Print QR Code in Terminal
-			return qrString, qrTimeout, nil
+			return code, 160, nil
 		} else {
 			// Device ID is Exist
 			// Reconnect WebSocket
