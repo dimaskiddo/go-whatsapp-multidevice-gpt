@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -26,12 +27,12 @@ var Login = &cobra.Command{
 
 			fmt.Println("")
 			fmt.Println("Please Insert Your Phone Number to Generate Pair Code:")
-			phoneInput := bufio.NewReader(os.Stdin)
-			fmt.Println("")
 
+			phoneInput := bufio.NewReader(os.Stdin)
 			phoneNumber, err := phoneInput.ReadString('\n')
 			if err != nil {
 				log.Println(log.LogLevelError, "Failed to Get Phone Number Input!")
+				return
 			}
 
 			pairResponse, pairTimeout, err := pkgWhatsApp.WhatsAppLogin(phoneNumber)
@@ -45,8 +46,11 @@ var Login = &cobra.Command{
 				return
 			}
 
+			fmt.Println("")
 			log.Println(log.LogLevelInfo, "Successfully Generate Pair Code. Your Pair Code is "+pairResponse)
 			log.Println(log.LogLevelInfo, "Pair Code Will Be Expired in "+strconv.Itoa(pairTimeout)+"s")
+
+			time.Sleep(time.Duration(pairTimeout) * time.Second)
 		} else {
 			log.Println(log.LogLevelInfo, "WhatsApp Client Already Logged-in")
 		}
