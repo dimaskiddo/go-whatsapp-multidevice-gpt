@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"go.mau.fi/whatsmeow"
+	wabin "go.mau.fi/whatsmeow/binary"
 	waproto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -64,6 +65,7 @@ func init() {
 
 func WhatsAppInitClient(device *store.Device) {
 	var err error
+	wabin.IndentXML = true
 
 	if WhatsAppClient == nil {
 		if device == nil {
@@ -75,6 +77,11 @@ func WhatsAppInitClient(device *store.Device) {
 		store.DeviceProps.Os = proto.String(WhatsAppGetUserOS())
 		store.DeviceProps.PlatformType = WhatsAppGetUserAgent("chrome").Enum()
 		store.DeviceProps.RequireFullSync = proto.Bool(false)
+		store.DeviceProps.HistorySyncConfig = &waproto.DeviceProps_HistorySyncConfig{
+			FullSyncDaysLimit:   proto.Uint32(1),
+			FullSyncSizeMbLimit: proto.Uint32(10),
+			StorageQuotaMb:      proto.Uint32(10),
+		}
 
 		// Set Client Versions
 		version.Major, err = env.GetEnvInt("WHATSAPP_VERSION_MAJOR")
@@ -103,6 +110,9 @@ func WhatsAppInitClient(device *store.Device) {
 
 		// Set WhatsApp Client Auto Trust Identity
 		WhatsAppClient.AutoTrustIdentity = true
+
+		// Disable Self Broadcast
+		WhatsAppClient.DontSendSelfBroadcast = true
 	}
 }
 
@@ -178,9 +188,6 @@ func WhatsAppLogin(jid string) (string, int, error) {
 				return "", 0, err
 			}
 
-			// Set WhatsApp Client Presence to Available
-			_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
-
 			return code, 160, nil
 		} else {
 			// Device ID is Exist
@@ -211,9 +218,6 @@ func WhatsAppReconnect() error {
 				return err
 			}
 
-			// Set WhatsApp Client Presence to Available
-			_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
-
 			return nil
 		}
 
@@ -230,7 +234,7 @@ func WhatsAppLogout() error {
 			var err error
 
 			// Set WhatsApp Client Presence to Unavailable
-			_ = WhatsAppClient.SendPresence(types.PresenceUnavailable)
+			WhatsAppPresence(false)
 
 			// Logout WhatsApp Client and Disconnect from WebSocket
 			err = WhatsAppClient.Logout()
@@ -255,6 +259,14 @@ func WhatsAppLogout() error {
 
 	// Return Error WhatsApp Client is not Valid
 	return errors.New("WhatsApp Client is not Valid")
+}
+
+func WhatsAppPresence(isAvailable bool) {
+	if isAvailable {
+		_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
+	} else {
+		_ = WhatsAppClient.SendPresence(types.PresenceUnavailable)
+	}
 }
 
 func WhatsAppComposeStatus(rjid types.JID, isComposing bool, isAudio bool) {
@@ -344,8 +356,12 @@ func WhatsAppHandler(event interface{}) {
 					log.Println(log.LogLevelInfo, "Question : "+question)
 
 					// Set Chat Presence
+					WhatsAppPresence(true)
 					WhatsAppComposeStatus(evt.Info.Chat, true, false)
-					defer WhatsAppComposeStatus(evt.Info.Chat, false, false)
+					defer func() {
+						WhatsAppComposeStatus(evt.Info.Chat, false, false)
+						WhatsAppPresence(false)
+					}()
 
 					response, err := gpt.GPT3Response(question)
 					if err != nil {

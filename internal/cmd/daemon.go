@@ -31,6 +31,7 @@ var Daemon = &cobra.Command{
 			if pkgWhatsApp.WhatsAppClient != nil {
 				if pkgWhatsApp.WhatsAppClient.IsConnected() && !isHandlerOn {
 					log.Println(log.LogLevelInfo, "Starting WhatsApp Client Event Listener for OpenAI GPT")
+
 					pkgWhatsApp.WhatsAppClient.AddEventHandler(pkgWhatsApp.WhatsAppHandler)
 
 					isHandlerOn = true
