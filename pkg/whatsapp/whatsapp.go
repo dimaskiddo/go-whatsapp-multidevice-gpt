@@ -77,11 +77,6 @@ func WhatsAppInitClient(device *store.Device) {
 		store.DeviceProps.Os = proto.String(WhatsAppGetUserOS())
 		store.DeviceProps.PlatformType = WhatsAppGetUserAgent("chrome").Enum()
 		store.DeviceProps.RequireFullSync = proto.Bool(false)
-		store.DeviceProps.HistorySyncConfig = &waproto.DeviceProps_HistorySyncConfig{
-			FullSyncDaysLimit:   proto.Uint32(1),
-			FullSyncSizeMbLimit: proto.Uint32(10),
-			StorageQuotaMb:      proto.Uint32(10),
-		}
 
 		// Set Client Versions
 		version.Major, err = env.GetEnvInt("WHATSAPP_VERSION_MAJOR")
@@ -299,13 +294,12 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 			rJID := event.Info.Chat
 
 			// Compose WhatsApp Proto
-			var msgContent *waproto.Message
-			msgContent = &waproto.Message{
+			msgContent := &waproto.Message{
 				Conversation: proto.String(response),
 			}
 
 			msgExtra := whatsmeow.SendRequestExtra{
-				ID: whatsmeow.GenerateMessageID(),
+				ID: WhatsAppClient.GenerateMessageID(),
 			}
 
 			// Send WhatsApp Message Proto
