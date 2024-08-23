@@ -11,7 +11,8 @@ import (
 
 	"go.mau.fi/whatsmeow"
 	wabin "go.mau.fi/whatsmeow/binary"
-	waproto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
@@ -111,46 +112,46 @@ func WhatsAppInitClient(device *store.Device) {
 	}
 }
 
-func WhatsAppGetUserAgent(agentType string) waproto.DeviceProps_PlatformType {
+func WhatsAppGetUserAgent(agentType string) waCompanionReg.DeviceProps_PlatformType {
 	switch strings.ToLower(agentType) {
 	case "desktop":
-		return waproto.DeviceProps_DESKTOP
+		return waCompanionReg.DeviceProps_DESKTOP
 	case "mac":
-		return waproto.DeviceProps_CATALINA
+		return waCompanionReg.DeviceProps_CATALINA
 	case "android":
-		return waproto.DeviceProps_ANDROID_AMBIGUOUS
+		return waCompanionReg.DeviceProps_ANDROID_AMBIGUOUS
 	case "android-phone":
-		return waproto.DeviceProps_ANDROID_PHONE
+		return waCompanionReg.DeviceProps_ANDROID_PHONE
 	case "andorid-tablet":
-		return waproto.DeviceProps_ANDROID_TABLET
+		return waCompanionReg.DeviceProps_ANDROID_TABLET
 	case "ios-phone":
-		return waproto.DeviceProps_IOS_PHONE
+		return waCompanionReg.DeviceProps_IOS_PHONE
 	case "ios-catalyst":
-		return waproto.DeviceProps_IOS_CATALYST
+		return waCompanionReg.DeviceProps_IOS_CATALYST
 	case "ipad":
-		return waproto.DeviceProps_IPAD
+		return waCompanionReg.DeviceProps_IPAD
 	case "wearos":
-		return waproto.DeviceProps_WEAR_OS
+		return waCompanionReg.DeviceProps_WEAR_OS
 	case "ie":
-		return waproto.DeviceProps_IE
+		return waCompanionReg.DeviceProps_IE
 	case "edge":
-		return waproto.DeviceProps_EDGE
+		return waCompanionReg.DeviceProps_EDGE
 	case "chrome":
-		return waproto.DeviceProps_CHROME
+		return waCompanionReg.DeviceProps_CHROME
 	case "safari":
-		return waproto.DeviceProps_SAFARI
+		return waCompanionReg.DeviceProps_SAFARI
 	case "firefox":
-		return waproto.DeviceProps_FIREFOX
+		return waCompanionReg.DeviceProps_FIREFOX
 	case "opera":
-		return waproto.DeviceProps_OPERA
+		return waCompanionReg.DeviceProps_OPERA
 	case "uwp":
-		return waproto.DeviceProps_UWP
+		return waCompanionReg.DeviceProps_UWP
 	case "aloha":
-		return waproto.DeviceProps_ALOHA
+		return waCompanionReg.DeviceProps_ALOHA
 	case "tv-tcl":
-		return waproto.DeviceProps_TCL_TV
+		return waCompanionReg.DeviceProps_TCL_TV
 	default:
-		return waproto.DeviceProps_UNKNOWN
+		return waCompanionReg.DeviceProps_UNKNOWN
 	}
 }
 
@@ -294,12 +295,11 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 			rJID := event.Info.Chat
 
 			// Compose WhatsApp Proto
-			msgContent := &waproto.Message{
-				Conversation: proto.String(response),
-			}
-
 			msgExtra := whatsmeow.SendRequestExtra{
 				ID: WhatsAppClient.GenerateMessageID(),
+			}
+			msgContent := &waE2E.Message{
+				Conversation: proto.String(response),
 			}
 
 			// Send WhatsApp Message Proto
