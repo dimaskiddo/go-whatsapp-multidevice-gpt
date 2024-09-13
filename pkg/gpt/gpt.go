@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	Ollama "github.com/ollama/ollama/api"
 	OpenAI "github.com/sashabaranov/go-openai"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/env"
@@ -13,22 +14,26 @@ import (
 )
 
 var OAIClient *OpenAI.Client
+var OClient *Ollama.Client
 
 var (
-	OAIGPTModelName,
-	OAIGPTBlockedWord string
+	WAGPTEngine,
+	WAGPTBlockedWord string
+	WAGPTBlockedWordRegex *regexp.Regexp
 )
 
-var OAIGPTModelToken int
-
 var (
+	OAIGPTModelName  string
+	OAIGPTModelToken int
 	OAIGPTModelTemperature,
 	OAIGPTModelTopP,
 	OAIGPTModelPenaltyPresence,
 	OAIGPTModelPenaltyFreq float32
 )
 
-var OAIGPTBlockedWordRegex *regexp.Regexp
+var (
+	OGPTModelName string
+)
 
 const listBlockedWord string = "" +
 	"lgbt|lesbian|gay|homosexual|homoseksual|bisexual|biseksual|transgender|" +
@@ -38,9 +43,29 @@ const listBlockedWord string = "" +
 func init() {
 	var err error
 
+	// -----------------------------------------------------------------------
+	// WhatsApp GPT Configuration Environment
+	// -----------------------------------------------------------------------
+	WAGPTEngine, err = env.GetEnvString("WHATSAPP_GPT_ENGINE")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp GPT Engine")
+	}
+
+	WAGPTBlockedWord = strings.TrimSpace(os.Getenv("WHATSAPP_GPT_BLOCKED_WORD"))
+	if len(WAGPTBlockedWord) > 0 {
+		WAGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + "|" + WAGPTBlockedWord + ")")
+	} else {
+		WAGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + ")")
+	}
+
+	// -----------------------------------------------------------------------
+	// OpenAI Configuration Environment
+	// -----------------------------------------------------------------------
 	OAIAPIKey, err := env.GetEnvString("OPENAI_API_KEY")
 	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI API Key")
+		if strings.ToLower(WAGPTEngine) == "openai" {
+			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI API Key")
+		}
 	}
 
 	OAIGPTModelName, err = env.GetEnvString("OPENAI_GPT_MODEL_NAME")
@@ -73,88 +98,146 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Penalty Frequency")
 	}
 
-	OAIGPTBlockedWord = strings.TrimSpace(os.Getenv("OPENAI_GPT_BLOCKED_WORD"))
-	if len(OAIGPTBlockedWord) > 0 {
-		OAIGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + "|" + OAIGPTBlockedWord + ")")
-	} else {
-		OAIGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + ")")
+	// -----------------------------------------------------------------------
+	// Ollama Configuration Environment
+	// -----------------------------------------------------------------------
+	OGPTModelName, err = env.GetEnvString("OLLAMA_GPT_MODEL_NAME")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama GPT Model Name")
 	}
 
-	OAIClient = OpenAI.NewClient(OAIAPIKey)
+	// -----------------------------------------------------------------------
+	// GPT Engine Initialization
+	// -----------------------------------------------------------------------
+	switch strings.ToLower(WAGPTEngine) {
+	case "openai":
+		OAIClient = OpenAI.NewClient(OAIAPIKey)
+
+	default:
+		OClient, err = Ollama.ClientFromEnvironment()
+		if err != nil {
+			log.Println(log.LogLevelFatal, "Error, "+err.Error())
+		}
+	}
 }
 
 func GPT3Response(question string) (response string, err error) {
-	if bool(OAIGPTBlockedWordRegex.MatchString(question)) {
+	if bool(WAGPTBlockedWordRegex.MatchString(question)) {
 		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
 	}
 
-	var gptResponseText string
+	switch strings.ToLower(WAGPTEngine) {
+	case "openai":
+		var OAIGPTResponseText string
 
-	gptChatMode := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
-	if bool(gptChatMode.MatchString(OAIGPTModelName)) {
-		gptRequest := OpenAI.ChatCompletionRequest{
-			Model:            OAIGPTModelName,
-			MaxTokens:        OAIGPTModelToken,
-			Temperature:      OAIGPTModelTemperature,
-			TopP:             OAIGPTModelTopP,
-			PresencePenalty:  OAIGPTModelPenaltyPresence,
-			FrequencyPenalty: OAIGPTModelPenaltyFreq,
-			Messages: []OpenAI.ChatCompletionMessage{
+		OAIGPTModel := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
+		if bool(OAIGPTModel.MatchString(OAIGPTModelName)) {
+			OAIGPTPrompt := OpenAI.ChatCompletionRequest{
+				Model:            OAIGPTModelName,
+				MaxTokens:        OAIGPTModelToken,
+				Temperature:      OAIGPTModelTemperature,
+				TopP:             OAIGPTModelTopP,
+				PresencePenalty:  OAIGPTModelPenaltyPresence,
+				FrequencyPenalty: OAIGPTModelPenaltyFreq,
+				Messages: []OpenAI.ChatCompletionMessage{
+					{
+						Role:    OpenAI.ChatMessageRoleUser,
+						Content: question,
+					},
+				},
+			}
+
+			OAIGPTResponse, err := OAIClient.CreateChatCompletion(
+				context.Background(),
+				OAIGPTPrompt,
+			)
+
+			if err != nil {
+				return "", err
+			}
+
+			if len(OAIGPTResponse.Choices) > 0 {
+				OAIGPTResponseText = OAIGPTResponse.Choices[0].Message.Content
+			}
+		} else {
+			OAIGPTPrompt := OpenAI.CompletionRequest{
+				Model:            OAIGPTModelName,
+				MaxTokens:        OAIGPTModelToken,
+				Temperature:      OAIGPTModelTemperature,
+				TopP:             OAIGPTModelTopP,
+				PresencePenalty:  OAIGPTModelPenaltyPresence,
+				FrequencyPenalty: OAIGPTModelPenaltyFreq,
+				Prompt:           question,
+			}
+
+			OAIGPTResponse, err := OAIClient.CreateCompletion(
+				context.Background(),
+				OAIGPTPrompt,
+			)
+
+			if err != nil {
+				return "", err
+			}
+
+			if len(OAIGPTResponse.Choices) > 0 {
+				OAIGPTResponseText = OAIGPTResponse.Choices[0].Text
+			}
+		}
+
+		OAIGPTResponseBuffer := strings.TrimSpace(OAIGPTResponseText)
+		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "?\n")
+		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "!\n")
+		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ":\n")
+		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "'\n")
+		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ".\n")
+		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "\n")
+
+		if bool(WAGPTBlockedWordRegex.MatchString(OAIGPTResponseBuffer)) {
+			return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
+		}
+
+		return OAIGPTResponseBuffer, nil
+
+	default:
+		var OGPTResponseText string
+
+		OGPTPrompt := &Ollama.ChatRequest{
+			Model: OGPTModelName,
+			Messages: []Ollama.Message{
 				{
-					Role:    OpenAI.ChatMessageRoleUser,
+					Role:    "user",
 					Content: question,
 				},
 			},
 		}
 
-		gptResponse, err := OAIClient.CreateChatCompletion(
+		err := OClient.Chat(
 			context.Background(),
-			gptRequest,
+			OGPTPrompt,
+			func(OGPTResponse Ollama.ChatResponse) error {
+				if len(OGPTResponse.Message.Content) > 0 {
+					OGPTResponseText = OGPTResponse.Message.Content
+				}
+				return nil
+			},
 		)
 
 		if err != nil {
 			return "", err
 		}
 
-		if len(gptResponse.Choices) > 0 {
-			gptResponseText = gptResponse.Choices[0].Message.Content
-		}
-	} else {
-		gptRequest := OpenAI.CompletionRequest{
-			Model:            OAIGPTModelName,
-			MaxTokens:        OAIGPTModelToken,
-			Temperature:      OAIGPTModelTemperature,
-			TopP:             OAIGPTModelTopP,
-			PresencePenalty:  OAIGPTModelPenaltyPresence,
-			FrequencyPenalty: OAIGPTModelPenaltyFreq,
-			Prompt:           question,
+		OGPTResponseBuffer := strings.TrimSpace(OGPTResponseText)
+		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "?\n")
+		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "!\n")
+		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, ":\n")
+		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "'\n")
+		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, ".\n")
+		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "\n")
+
+		if bool(WAGPTBlockedWordRegex.MatchString(OGPTResponseBuffer)) {
+			return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
 		}
 
-		gptResponse, err := OAIClient.CreateCompletion(
-			context.Background(),
-			gptRequest,
-		)
-
-		if err != nil {
-			return "", err
-		}
-
-		if len(gptResponse.Choices) > 0 {
-			gptResponseText = gptResponse.Choices[0].Text
-		}
+		return OGPTResponseBuffer, nil
 	}
-
-	gptResponseBuffer := strings.TrimSpace(gptResponseText)
-	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "?\n")
-	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "!\n")
-	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, ":\n")
-	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "'\n")
-	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, ".\n")
-	gptResponseBuffer = strings.TrimLeft(gptResponseBuffer, "\n")
-
-	if bool(OAIGPTBlockedWordRegex.MatchString(gptResponseBuffer)) {
-		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
-	}
-
-	return gptResponseBuffer, nil
 }

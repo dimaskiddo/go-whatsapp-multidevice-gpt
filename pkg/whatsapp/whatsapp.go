@@ -27,11 +27,11 @@ var WhatsAppDatastore *sqlstore.Container
 var WhatsAppClient *whatsmeow.Client
 
 var (
-	WhatsAppClientProxyURL string
-	WhatsAppOAIGPTTag      string
+	WhatsAppClientProxyURL,
+	WhatsAppGPTTag string
 )
 
-var WhatsAppOAIGPTRegex *regexp.Regexp
+var WhatsAppGPTTagRegex *regexp.Regexp
 
 func init() {
 	var err error
@@ -53,13 +53,13 @@ func init() {
 
 	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
 
-	WhatsAppOAIGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
+	WhatsAppGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
 	}
 
-	WhatsAppOAIGPTTag = strings.TrimSpace(strings.ToLower(WhatsAppOAIGPTTag))
-	WhatsAppOAIGPTRegex = regexp.MustCompile("\\b(?i)(" + WhatsAppOAIGPTTag + " " + ")")
+	WhatsAppGPTTag = strings.TrimSpace(strings.ToLower(WhatsAppGPTTag))
+	WhatsAppGPTTagRegex = regexp.MustCompile("\\b(?i)(" + WhatsAppGPTTag + " " + ")")
 
 	WhatsAppDatastore = datastore
 }
@@ -338,8 +338,8 @@ func WhatsAppHandler(event interface{}) {
 
 		rMessage := strings.TrimSpace(*evt.Message.Conversation)
 
-		if bool(WhatsAppOAIGPTRegex.MatchString(rMessage)) {
-			rMessageSplit := WhatsAppOAIGPTRegex.Split(rMessage, 2)
+		if bool(WhatsAppGPTTagRegex.MatchString(rMessage)) {
+			rMessageSplit := WhatsAppGPTTagRegex.Split(rMessage, 2)
 
 			if len(rMessageSplit) == 2 {
 				question := strings.TrimSpace(rMessageSplit[1])
