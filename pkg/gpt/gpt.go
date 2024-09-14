@@ -2,6 +2,7 @@ package gpt
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -137,9 +138,21 @@ func init() {
 			OHostURL = OHost
 		}
 
+		var OHostPort string
+		switch OHostSchema {
+		case "http":
+			OHostPort = "80"
+
+		case "https":
+			OHostPort = "443"
+
+		default:
+			OHostPort = "11434"
+		}
+
 		OClient = Ollama.NewClient(&url.URL{
 			Scheme: OHostSchema,
-			Host:   OHostURL,
+			Host:   net.JoinHostPort(OHostURL, OHostPort),
 			Path:   OHostPath,
 		}, http.DefaultClient)
 	}
