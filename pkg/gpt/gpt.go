@@ -2,6 +2,8 @@ package gpt
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -32,6 +34,8 @@ var (
 )
 
 var (
+	OHost,
+	OHostPath,
 	OGPTModelName string
 )
 
@@ -101,6 +105,18 @@ func init() {
 	// -----------------------------------------------------------------------
 	// Ollama Configuration Environment
 	// -----------------------------------------------------------------------
+	OHost, err = env.GetEnvString("OLLAMA_HOST")
+	if err != nil {
+		if strings.ToLower(WAGPTEngine) == "ollama" {
+			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama Host")
+		}
+	}
+
+	OHostPath, err = env.GetEnvString("OLLAMA_HOST_PATH")
+	if err != nil {
+		OHostPath = "/"
+	}
+
 	OGPTModelName, err = env.GetEnvString("OLLAMA_GPT_MODEL_NAME")
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama GPT Model Name")
@@ -114,10 +130,18 @@ func init() {
 		OAIClient = OpenAI.NewClient(OAIAPIKey)
 
 	default:
-		OClient, err = Ollama.ClientFromEnvironment()
-		if err != nil {
-			log.Println(log.LogLevelFatal, "Error, "+err.Error())
+		OHostSchema, OHostURL, isOK := strings.Cut(OHost, "://")
+
+		if !isOK {
+			OHostSchema = "http"
+			OHostURL = OHost
 		}
+
+		OClient = Ollama.NewClient(&url.URL{
+			Scheme: OHostSchema,
+			Host:   OHostURL,
+			Path:   OHostPath,
+		}, http.DefaultClient)
 	}
 }
 
