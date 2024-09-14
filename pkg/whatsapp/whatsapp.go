@@ -53,9 +53,9 @@ func init() {
 
 	WhatsAppClientProxyURL, _ = env.GetEnvString("WHATSAPP_CLIENT_PROXY_URL")
 
-	WhatsAppGPTTag, err = env.GetEnvString("WHATSAPP_OPENAI_GPT_TAG")
+	WhatsAppGPTTag, err = env.GetEnvString("WHATSAPP_GPT_TAG")
 	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client OpenAI GPT Tag")
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp GPT Tag")
 	}
 
 	WhatsAppGPTTag = strings.TrimSpace(strings.ToLower(WhatsAppGPTTag))
