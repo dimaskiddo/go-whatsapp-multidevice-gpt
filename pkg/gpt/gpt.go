@@ -131,23 +131,22 @@ func init() {
 		OAIClient = OpenAI.NewClient(OAIAPIKey)
 
 	default:
+		var OHostPort string
+
 		OHostSchema, OHostURL, isOK := strings.Cut(OHost, "://")
 
 		if !isOK {
 			OHostSchema = "http"
 			OHostURL = OHost
+			OHostPort = "11434"
 		}
 
-		var OHostPort string
 		switch OHostSchema {
 		case "http":
 			OHostPort = "80"
 
 		case "https":
 			OHostPort = "443"
-
-		default:
-			OHostPort = "11434"
 		}
 
 		OClient = Ollama.NewClient(&url.URL{
@@ -238,6 +237,9 @@ func GPT3Response(question string) (response string, err error) {
 	default:
 		var OGPTResponseText string
 
+		isStream := new(bool)
+		*isStream = false
+
 		OGPTPrompt := &Ollama.ChatRequest{
 			Model: OGPTModelName,
 			Messages: []Ollama.Message{
@@ -246,17 +248,18 @@ func GPT3Response(question string) (response string, err error) {
 					Content: question,
 				},
 			},
+			Stream: isStream,
+		}
+
+		OGTPResponseFunc := func(OGPTResponse Ollama.ChatResponse) error {
+			OGPTResponseText = OGPTResponse.Message.Content
+			return nil
 		}
 
 		err := OClient.Chat(
 			context.Background(),
 			OGPTPrompt,
-			func(OGPTResponse Ollama.ChatResponse) error {
-				if len(OGPTResponse.Message.Content) > 0 {
-					OGPTResponseText = OGPTResponse.Message.Content
-				}
-				return nil
-			},
+			OGTPResponseFunc,
 		)
 
 		if err != nil {
