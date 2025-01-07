@@ -106,9 +106,6 @@ func WhatsAppInitClient(device *store.Device) {
 
 		// Set WhatsApp Client Auto Trust Identity
 		WhatsAppClient.AutoTrustIdentity = true
-
-		// Disable Self Broadcast
-		WhatsAppClient.DontSendSelfBroadcast = true
 	}
 }
 
