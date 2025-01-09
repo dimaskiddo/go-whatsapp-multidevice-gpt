@@ -26,7 +26,11 @@ var (
 )
 
 var (
-	OAIGPTModelName  string
+	OAIHost,
+	OAIHostPath,
+	OAIAPIKey,
+	OAIGPTModelName,
+	OAIGPTModelPrompt string
 	OAIGPTModelToken int
 	OAIGPTModelTemperature,
 	OAIGPTModelTopP,
@@ -37,7 +41,8 @@ var (
 var (
 	OHost,
 	OHostPath,
-	OGPTModelName string
+	OGPTModelName,
+	OGPTModelPrompt string
 )
 
 const listBlockedWord string = "" +
@@ -63,64 +68,84 @@ func init() {
 		WAGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + ")")
 	}
 
-	// -----------------------------------------------------------------------
-	// OpenAI Configuration Environment
-	// -----------------------------------------------------------------------
-	OAIAPIKey, err := env.GetEnvString("OPENAI_API_KEY")
-	if err != nil {
-		if strings.ToLower(WAGPTEngine) == "openai" {
+	switch strings.ToLower(WAGPTEngine) {
+	case "openai":
+		// -----------------------------------------------------------------------
+		// OpenAI Configuration Environment
+		// -----------------------------------------------------------------------
+		OAIHost, err = env.GetEnvString("OPENAI_HOST")
+		if err != nil {
+			OAIHost = "https://api.openai.com"
+		}
+
+		OAIHostPath, err = env.GetEnvString("OPENAI_HOST_PATH")
+		if err != nil {
+			OAIHostPath = "/v1"
+		}
+
+		OAIAPIKey, err = env.GetEnvString("OPENAI_API_KEY")
+		if err != nil {
 			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI API Key")
 		}
-	}
 
-	OAIGPTModelName, err = env.GetEnvString("OPENAI_GPT_MODEL_NAME")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Name")
-	}
+		OAIGPTModelName, err = env.GetEnvString("OPENAI_GPT_MODEL_NAME")
+		if err != nil {
+			OAIGPTModelName = "gpt-3.5-turbo"
+		}
 
-	OAIGPTModelToken, err = env.GetEnvInt("OPENAI_GPT_MODEL_TOKEN")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Token")
-	}
+		OAIGPTModelPrompt, err = env.GetEnvString("OPENAI_GPT_MODEL_SYSTEM_PROMPT")
+		if err != nil {
+			OAIGPTModelPrompt = ""
+		}
 
-	OAIGPTModelTemperature, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_TEMPERATURE")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Temperature")
-	}
+		OAIGPTModelToken, err = env.GetEnvInt("OPENAI_GPT_MODEL_TOKEN")
+		if err != nil {
+			OAIGPTModelToken = 4096
+		}
 
-	OAIGPTModelTopP, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_TOP_P")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Top P")
-	}
+		OAIGPTModelTemperature, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_TEMPERATURE")
+		if err != nil {
+			OAIGPTModelTemperature = 0
+		}
 
-	OAIGPTModelPenaltyPresence, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_PENALTY_PRESENCE")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Penalty Presence")
-	}
+		OAIGPTModelTopP, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_TOP_P")
+		if err != nil {
+			OAIGPTModelTopP = 1
+		}
 
-	OAIGPTModelPenaltyFreq, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_PENALTY_FREQUENCY")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI GPT Model Penalty Frequency")
-	}
+		OAIGPTModelPenaltyPresence, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_PENALTY_PRESENCE")
+		if err != nil {
+			OAIGPTModelPenaltyPresence = 0
+		}
 
-	// -----------------------------------------------------------------------
-	// Ollama Configuration Environment
-	// -----------------------------------------------------------------------
-	OHost, err = env.GetEnvString("OLLAMA_HOST")
-	if err != nil {
-		if strings.ToLower(WAGPTEngine) == "ollama" {
+		OAIGPTModelPenaltyFreq, err = env.GetEnvFloat32("OPENAI_GPT_MODEL_PENALTY_FREQUENCY")
+		if err != nil {
+			OAIGPTModelPenaltyFreq = 0
+		}
+
+	default:
+		// -----------------------------------------------------------------------
+		// Ollama Configuration Environment
+		// -----------------------------------------------------------------------
+		OHost, err = env.GetEnvString("OLLAMA_HOST")
+		if err != nil {
 			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama Host")
 		}
-	}
 
-	OHostPath, err = env.GetEnvString("OLLAMA_HOST_PATH")
-	if err != nil {
-		OHostPath = "/"
-	}
+		OHostPath, err = env.GetEnvString("OLLAMA_HOST_PATH")
+		if err != nil {
+			OHostPath = "/"
+		}
 
-	OGPTModelName, err = env.GetEnvString("OLLAMA_GPT_MODEL_NAME")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama GPT Model Name")
+		OGPTModelName, err = env.GetEnvString("OLLAMA_GPT_MODEL_NAME")
+		if err != nil {
+			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama GPT Model Name")
+		}
+
+		OGPTModelPrompt, err = env.GetEnvString("OLLAMA_GPT_MODEL_SYSTEM_PROMPT")
+		if err != nil {
+			OGPTModelPrompt = ""
+		}
 	}
 
 	// -----------------------------------------------------------------------
@@ -128,7 +153,10 @@ func init() {
 	// -----------------------------------------------------------------------
 	switch strings.ToLower(WAGPTEngine) {
 	case "openai":
-		OAIClient = OpenAI.NewClient(OAIAPIKey)
+		OAIConfig := OpenAI.DefaultConfig(OAIAPIKey)
+		OAIConfig.BaseURL = OAIHost + OAIHostPath
+
+		OAIClient = OpenAI.NewClientWithConfig(OAIConfig)
 
 	default:
 		var OHostPort string
@@ -165,6 +193,27 @@ func GPT3Response(question string) (response string, err error) {
 	switch strings.ToLower(WAGPTEngine) {
 	case "openai":
 		var OAIGPTResponseText string
+		var OAIGPTChatCompletion []OpenAI.ChatCompletionMessage
+
+		if len(strings.TrimSpace(OAIGPTModelPrompt)) != 0 {
+			OAIGPTChatCompletion = []OpenAI.ChatCompletionMessage{
+				{
+					Role:    OpenAI.ChatMessageRoleSystem,
+					Content: OAIGPTModelPrompt,
+				},
+				{
+					Role:    OpenAI.ChatMessageRoleUser,
+					Content: question,
+				},
+			}
+		} else {
+			OAIGPTChatCompletion = []OpenAI.ChatCompletionMessage{
+				{
+					Role:    OpenAI.ChatMessageRoleUser,
+					Content: question,
+				},
+			}
+		}
 
 		OAIGPTModel := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
 		if bool(OAIGPTModel.MatchString(OAIGPTModelName)) {
@@ -175,12 +224,7 @@ func GPT3Response(question string) (response string, err error) {
 				TopP:             OAIGPTModelTopP,
 				PresencePenalty:  OAIGPTModelPenaltyPresence,
 				FrequencyPenalty: OAIGPTModelPenaltyFreq,
-				Messages: []OpenAI.ChatCompletionMessage{
-					{
-						Role:    OpenAI.ChatMessageRoleUser,
-						Content: question,
-					},
-				},
+				Messages:         OAIGPTChatCompletion,
 			}
 
 			OAIGPTResponse, err := OAIClient.CreateChatCompletion(
@@ -236,19 +280,35 @@ func GPT3Response(question string) (response string, err error) {
 
 	default:
 		var OGPTResponseText string
+		var OGPTChatCompletion []Ollama.Message
 
 		isStream := new(bool)
 		*isStream = false
 
-		OGPTPrompt := &Ollama.ChatRequest{
-			Model: OGPTModelName,
-			Messages: []Ollama.Message{
+		if len(strings.TrimSpace(OGPTModelPrompt)) != 0 {
+			OGPTChatCompletion = []Ollama.Message{
+				{
+					Role:    "system",
+					Content: OGPTModelPrompt,
+				},
 				{
 					Role:    "user",
 					Content: question,
 				},
-			},
-			Stream: isStream,
+			}
+		} else {
+			OGPTChatCompletion = []Ollama.Message{
+				{
+					Role:    "user",
+					Content: question,
+				},
+			}
+		}
+
+		OGPTPrompt := &Ollama.ChatRequest{
+			Model:    OGPTModelName,
+			Messages: OGPTChatCompletion,
+			Stream:   isStream,
 		}
 
 		OGTPResponseFunc := func(OGPTResponse Ollama.ChatResponse) error {
