@@ -215,53 +215,28 @@ func GPT3Response(question string) (response string, err error) {
 			}
 		}
 
-		OAIGPTModel := regexp.MustCompile("\\b(?i)(" + "gpt-3\\.5" + ")")
-		if bool(OAIGPTModel.MatchString(OAIGPTModelName)) {
-			OAIGPTPrompt := OpenAI.ChatCompletionRequest{
-				Model:            OAIGPTModelName,
-				MaxTokens:        OAIGPTModelToken,
-				Temperature:      OAIGPTModelTemperature,
-				TopP:             OAIGPTModelTopP,
-				PresencePenalty:  OAIGPTModelPenaltyPresence,
-				FrequencyPenalty: OAIGPTModelPenaltyFreq,
-				Messages:         OAIGPTChatCompletion,
-			}
+		OAIGPTPrompt := OpenAI.ChatCompletionRequest{
+			Model:            OAIGPTModelName,
+			MaxTokens:        OAIGPTModelToken,
+			Temperature:      OAIGPTModelTemperature,
+			TopP:             OAIGPTModelTopP,
+			PresencePenalty:  OAIGPTModelPenaltyPresence,
+			FrequencyPenalty: OAIGPTModelPenaltyFreq,
+			Messages:         OAIGPTChatCompletion,
+			Stream:           false,
+		}
 
-			OAIGPTResponse, err := OAIClient.CreateChatCompletion(
-				context.Background(),
-				OAIGPTPrompt,
-			)
+		OAIGPTResponse, err := OAIClient.CreateChatCompletion(
+			context.Background(),
+			OAIGPTPrompt,
+		)
 
-			if err != nil {
-				return "", err
-			}
+		if err != nil {
+			return "", err
+		}
 
-			if len(OAIGPTResponse.Choices) > 0 {
-				OAIGPTResponseText = OAIGPTResponse.Choices[0].Message.Content
-			}
-		} else {
-			OAIGPTPrompt := OpenAI.CompletionRequest{
-				Model:            OAIGPTModelName,
-				MaxTokens:        OAIGPTModelToken,
-				Temperature:      OAIGPTModelTemperature,
-				TopP:             OAIGPTModelTopP,
-				PresencePenalty:  OAIGPTModelPenaltyPresence,
-				FrequencyPenalty: OAIGPTModelPenaltyFreq,
-				Prompt:           question,
-			}
-
-			OAIGPTResponse, err := OAIClient.CreateCompletion(
-				context.Background(),
-				OAIGPTPrompt,
-			)
-
-			if err != nil {
-				return "", err
-			}
-
-			if len(OAIGPTResponse.Choices) > 0 {
-				OAIGPTResponseText = OAIGPTResponse.Choices[0].Text
-			}
+		if len(OAIGPTResponse.Choices) > 0 {
+			OAIGPTResponseText = OAIGPTResponse.Choices[0].Message.Content
 		}
 
 		OAIGPTResponseBuffer := strings.TrimSpace(OAIGPTResponseText)
