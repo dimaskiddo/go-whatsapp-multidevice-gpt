@@ -333,7 +333,7 @@ func WhatsAppHandler(event interface{}) {
 			maskRJID = realRJID[0:len(realRJID)-4] + "xxxx" + "@" + splitRJID[1]
 		}
 
-		rMessage := strings.TrimSpace(*evt.Message.Conversation)
+		rMessage := strings.TrimSpace(evt.Message.GetConversation())
 
 		if bool(WhatsAppGPTTagRegex.MatchString(rMessage)) {
 			rMessageSplit := WhatsAppGPTTagRegex.Split(rMessage, 2)
@@ -354,7 +354,7 @@ func WhatsAppHandler(event interface{}) {
 						WhatsAppPresence(false)
 					}()
 
-					response, err := gpt.GPT3Response(question)
+					response, err := gpt.GPTResponse(question)
 					if err != nil || len(response) == 0 {
 						log.Println(log.LogLevelError, err.Error())
 						response = "Sorry, the AI can not response for this time. Please try again after a few moment 🥺"

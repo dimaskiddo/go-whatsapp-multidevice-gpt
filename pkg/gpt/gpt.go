@@ -185,7 +185,7 @@ func init() {
 	}
 }
 
-func GPT3Response(question string) (response string, err error) {
+func GPTResponse(question string) (response string, err error) {
 	if bool(WAGPTBlockedWordRegex.MatchString(question)) {
 		return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
 	}
@@ -247,10 +247,6 @@ func GPT3Response(question string) (response string, err error) {
 		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ".\n")
 		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "\n")
 
-		if bool(WAGPTBlockedWordRegex.MatchString(OAIGPTResponseBuffer)) {
-			return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
-		}
-
 		return OAIGPTResponseBuffer, nil
 
 	default:
@@ -308,10 +304,6 @@ func GPT3Response(question string) (response string, err error) {
 		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "'\n")
 		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, ".\n")
 		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "\n")
-
-		if bool(WAGPTBlockedWordRegex.MatchString(OGPTResponseBuffer)) {
-			return "Sorry, the AI can not response due to it is containing some blocked word 🥺", nil
-		}
 
 		return OGPTResponseBuffer, nil
 	}
