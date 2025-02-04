@@ -2,15 +2,12 @@ package gpt
 
 import (
 	"context"
-	"encoding/json"
-	"net"
-	"net/http"
-	"net/url"
+	"errors"
+	"io"
 	"os"
 	"regexp"
 	"strings"
 
-	Ollama "github.com/ollama/ollama/api"
 	OpenAI "github.com/sashabaranov/go-openai"
 
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/env"
@@ -18,7 +15,6 @@ import (
 )
 
 var OAIClient *OpenAI.Client
-var OClient *Ollama.Client
 
 var (
 	WAGPTEngine,
@@ -30,11 +26,6 @@ var (
 	OAIHost,
 	OAIHostPath,
 	OAIAPIKey string
-)
-
-var (
-	OHost,
-	OHostPath string
 )
 
 var (
@@ -58,11 +49,6 @@ func init() {
 	// -----------------------------------------------------------------------
 	// WhatsApp GPT Configuration Environment
 	// -----------------------------------------------------------------------
-	WAGPTEngine, err = env.GetEnvString("WHATSAPP_GPT_ENGINE")
-	if err != nil {
-		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp GPT Engine")
-	}
-
 	WAGPTBlockedWord = strings.TrimSpace(os.Getenv("WHATSAPP_GPT_BLOCKED_WORD"))
 	if len(WAGPTBlockedWord) > 0 {
 		WAGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + "|" + WAGPTBlockedWord + ")")
@@ -70,39 +56,22 @@ func init() {
 		WAGPTBlockedWordRegex = regexp.MustCompile("\\b(?i)(" + listBlockedWord + ")")
 	}
 
-	switch strings.ToLower(WAGPTEngine) {
-	case "openai":
-		// -----------------------------------------------------------------------
-		// OpenAI Configuration Environment
-		// -----------------------------------------------------------------------
-		OAIHost, err = env.GetEnvString("OPENAI_HOST")
-		if err != nil {
-			OAIHost = "https://api.openai.com"
-		}
+	// -----------------------------------------------------------------------
+	// OpenAI Configuration Environment
+	// -----------------------------------------------------------------------
+	OAIHost, err = env.GetEnvString("OPENAI_HOST")
+	if err != nil {
+		OAIHost = "https://api.openai.com"
+	}
 
-		OAIHostPath, err = env.GetEnvString("OPENAI_HOST_PATH")
-		if err != nil {
-			OAIHostPath = "/v1"
-		}
+	OAIHostPath, err = env.GetEnvString("OPENAI_HOST_PATH")
+	if err != nil {
+		OAIHostPath = "/v1"
+	}
 
-		OAIAPIKey, err = env.GetEnvString("OPENAI_API_KEY")
-		if err != nil {
-			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI API Key")
-		}
-
-	default:
-		// -----------------------------------------------------------------------
-		// Ollama Configuration Environment
-		// -----------------------------------------------------------------------
-		OHost, err = env.GetEnvString("OLLAMA_HOST")
-		if err != nil {
-			log.Println(log.LogLevelFatal, "Error Parse Environment Variable for Ollama Host")
-		}
-
-		OHostPath, err = env.GetEnvString("OLLAMA_HOST_PATH")
-		if err != nil {
-			OHostPath = "/"
-		}
+	OAIAPIKey, err = env.GetEnvString("OPENAI_API_KEY")
+	if err != nil {
+		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for OpenAI API Key")
 	}
 
 	// -----------------------------------------------------------------------
@@ -146,38 +115,10 @@ func init() {
 	// -----------------------------------------------------------------------
 	// GPT Engine Initialization
 	// -----------------------------------------------------------------------
-	switch strings.ToLower(WAGPTEngine) {
-	case "openai":
-		OAIConfig := OpenAI.DefaultConfig(OAIAPIKey)
-		OAIConfig.BaseURL = OAIHost + OAIHostPath
+	OAIConfig := OpenAI.DefaultConfig(OAIAPIKey)
+	OAIConfig.BaseURL = OAIHost + OAIHostPath
 
-		OAIClient = OpenAI.NewClientWithConfig(OAIConfig)
-
-	default:
-		var OHostPort string
-
-		OHostSchema, OHostURL, isOK := strings.Cut(OHost, "://")
-
-		if !isOK {
-			OHostSchema = "http"
-			OHostURL = OHost
-			OHostPort = "11434"
-		}
-
-		switch OHostSchema {
-		case "http":
-			OHostPort = "80"
-
-		case "https":
-			OHostPort = "443"
-		}
-
-		OClient = Ollama.NewClient(&url.URL{
-			Scheme: OHostSchema,
-			Host:   net.JoinHostPort(OHostURL, OHostPort),
-			Path:   OHostPath,
-		}, http.DefaultClient)
-	}
+	OAIClient = OpenAI.NewClientWithConfig(OAIConfig)
 }
 
 func GPTResponse(question string) (response string, err error) {
@@ -186,131 +127,74 @@ func GPTResponse(question string) (response string, err error) {
 	}
 
 	isStream := new(bool)
-	*isStream = false
+	*isStream = true
 
-	switch strings.ToLower(WAGPTEngine) {
-	case "openai":
-		var OAIGPTResponseText string
-		var OAIGPTChatCompletion []OpenAI.ChatCompletionMessage
+	var OAIGPTResponseText string
+	var OAIGPTChatCompletion []OpenAI.ChatCompletionMessage
 
-		if len(strings.TrimSpace(GPTModelPrompt)) != 0 {
-			OAIGPTChatCompletion = []OpenAI.ChatCompletionMessage{
-				{
-					Role:    OpenAI.ChatMessageRoleSystem,
-					Content: GPTModelPrompt,
-				},
-				{
-					Role:    OpenAI.ChatMessageRoleUser,
-					Content: question,
-				},
-			}
-		} else {
-			OAIGPTChatCompletion = []OpenAI.ChatCompletionMessage{
-				{
-					Role:    OpenAI.ChatMessageRoleUser,
-					Content: question,
-				},
-			}
+	if len(strings.TrimSpace(GPTModelPrompt)) != 0 {
+		OAIGPTChatCompletion = []OpenAI.ChatCompletionMessage{
+			{
+				Role:    OpenAI.ChatMessageRoleSystem,
+				Content: GPTModelPrompt,
+			},
+			{
+				Role:    OpenAI.ChatMessageRoleUser,
+				Content: question,
+			},
 		}
-
-		OAIGPTPrompt := OpenAI.ChatCompletionRequest{
-			Model:            GPTModelName,
-			MaxTokens:        GPTModelToken,
-			Temperature:      GPTModelTemperature,
-			TopP:             GPTModelTopP,
-			PresencePenalty:  GPTModelPenaltyPresence,
-			FrequencyPenalty: GPTModelPenaltyFreq,
-			Messages:         OAIGPTChatCompletion,
-			Stream:           *isStream,
+	} else {
+		OAIGPTChatCompletion = []OpenAI.ChatCompletionMessage{
+			{
+				Role:    OpenAI.ChatMessageRoleUser,
+				Content: question,
+			},
 		}
+	}
 
-		OAIGPTResponse, err := OAIClient.CreateChatCompletion(
-			context.Background(),
-			OAIGPTPrompt,
-		)
+	OAIGPTPrompt := OpenAI.ChatCompletionRequest{
+		Model:            GPTModelName,
+		MaxTokens:        GPTModelToken,
+		Temperature:      GPTModelTemperature,
+		TopP:             GPTModelTopP,
+		PresencePenalty:  GPTModelPenaltyPresence,
+		FrequencyPenalty: GPTModelPenaltyFreq,
+		Messages:         OAIGPTChatCompletion,
+		Stream:           *isStream,
+	}
+
+	OAIGPTStream, err := OAIClient.CreateChatCompletionStream(
+		context.Background(),
+		OAIGPTPrompt,
+	)
+
+	if err != nil {
+		return "", err
+	}
+	defer OAIGPTStream.Close()
+
+	for {
+		OAIGPTResponse, err := OAIGPTStream.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
 
 		if err != nil {
 			return "", err
 		}
 
 		if len(OAIGPTResponse.Choices) > 0 {
-			OAIGPTResponseText = OAIGPTResponse.Choices[0].Message.Content
+			OAIGPTResponseText = OAIGPTResponseText + OAIGPTResponse.Choices[0].Delta.Content
 		}
-
-		OAIGPTResponseBuffer := strings.TrimSpace(OAIGPTResponseText)
-		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "?\n")
-		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "!\n")
-		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ":\n")
-		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "'\n")
-		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ".\n")
-		OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "\n")
-
-		return OAIGPTResponseBuffer, nil
-
-	default:
-		var OGPTResponseText string
-		var OGPTChatCompletion []Ollama.Message
-
-		if len(strings.TrimSpace(GPTModelPrompt)) != 0 {
-			OGPTChatCompletion = []Ollama.Message{
-				{
-					Role:    "system",
-					Content: GPTModelPrompt,
-				},
-				{
-					Role:    "user",
-					Content: question,
-				},
-			}
-		} else {
-			OGPTChatCompletion = []Ollama.Message{
-				{
-					Role:    "user",
-					Content: question,
-				},
-			}
-		}
-
-		OGPTOptions := map[string]interface{}{}
-		OGPTOptionsMarshal, _ := json.Marshal(Ollama.Options{
-			Temperature:      GPTModelTemperature,
-			TopP:             GPTModelTopP,
-			PresencePenalty:  GPTModelPenaltyPresence,
-			FrequencyPenalty: GPTModelPenaltyFreq,
-		})
-
-		json.Unmarshal(OGPTOptionsMarshal, &OGPTOptions)
-
-		OGPTPrompt := &Ollama.ChatRequest{
-			Model:    GPTModelName,
-			Options:  OGPTOptions,
-			Messages: OGPTChatCompletion,
-			Stream:   isStream,
-		}
-
-		OGTPResponseFunc := func(OGPTResponse Ollama.ChatResponse) error {
-			OGPTResponseText = OGPTResponse.Message.Content
-			return nil
-		}
-
-		err := OClient.Chat(
-			context.Background(),
-			OGPTPrompt,
-			OGTPResponseFunc,
-		)
-
-		if err != nil {
-			return "", err
-		}
-
-		OGPTResponseBuffer := strings.TrimSpace(OGPTResponseText)
-		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "?\n")
-		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "!\n")
-		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, ":\n")
-		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "'\n")
-		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, ".\n")
-		OGPTResponseBuffer = strings.TrimLeft(OGPTResponseBuffer, "\n")
-
-		return OGPTResponseBuffer, nil
 	}
+
+	OAIGPTResponseBuffer := strings.TrimSpace(OAIGPTResponseText)
+	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "?\n")
+	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "!\n")
+	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ":\n")
+	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "'\n")
+	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ".\n")
+	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "\n")
+
+	return OAIGPTResponseBuffer, nil
 }
