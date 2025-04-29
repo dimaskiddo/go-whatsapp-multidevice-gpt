@@ -17,8 +17,7 @@ import (
 var OAIClient *OpenAI.Client
 
 var (
-	WAGPTEngine,
-	WAGPTBlockedWord string
+	WAGPTBlockedWord      string
 	WAGPTBlockedWordRegex *regexp.Regexp
 )
 
@@ -94,12 +93,12 @@ func init() {
 
 	GPTModelTemperature, err = env.GetEnvFloat32("GPT_MODEL_TEMPERATURE")
 	if err != nil {
-		GPTModelTemperature = 0
+		GPTModelTemperature = 0.8
 	}
 
 	GPTModelTopP, err = env.GetEnvFloat32("GPT_MODEL_TOP_P")
 	if err != nil {
-		GPTModelTopP = 1
+		GPTModelTopP = 0.9
 	}
 
 	GPTModelPenaltyPresence, err = env.GetEnvFloat32("GPT_MODEL_PENALTY_PRESENCE")
@@ -188,7 +187,10 @@ func GPTResponse(question string) (response string, err error) {
 		}
 	}
 
-	OAIGPTResponseBuffer := strings.TrimSpace(OAIGPTResponseText)
+	ThinkingResponseRegex := regexp.MustCompile("[\\s\\S]*<\\/think>\\n?")
+	CleanThinkingResponse := ThinkingResponseRegex.ReplaceAllString(OAIGPTResponseText, "")
+
+	OAIGPTResponseBuffer := strings.TrimSpace(CleanThinkingResponse)
 	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "?\n")
 	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, "!\n")
 	OAIGPTResponseBuffer = strings.TrimLeft(OAIGPTResponseBuffer, ":\n")

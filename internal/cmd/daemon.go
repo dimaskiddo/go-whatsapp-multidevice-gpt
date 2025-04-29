@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	pkgGPT "github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/gpt"
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 	pkgWhatsApp "github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/whatsapp"
 )
@@ -32,14 +30,7 @@ var Daemon = &cobra.Command{
 		for {
 			if pkgWhatsApp.WhatsAppClient != nil {
 				if pkgWhatsApp.WhatsAppClient.IsConnected() && !isHandlerOn {
-					switch strings.ToLower(pkgGPT.WAGPTEngine) {
-					case "openai":
-						log.Println(log.LogLevelInfo, "Starting WhatsApp Client Event Listener for OpenAI GPT")
-
-					default:
-						log.Println(log.LogLevelInfo, "Starting WhatsApp Client Event Listener for Ollama GPT")
-					}
-
+					log.Println(log.LogLevelInfo, "Starting WhatsApp Client Event Listener for OpenAI GPT")
 					pkgWhatsApp.WhatsAppClient.AddEventHandler(pkgWhatsApp.WhatsAppHandler)
 
 					isHandlerOn = true
