@@ -16,5 +16,5 @@ services:
     env_file:
       - ./.env
     volumes:
-      - ./dbs:/usr/app/go-whatsapp-multidevice-gpt/dbs
+      - ./dbs:/usr/app/gowam-gpt/dbs
     restart: unless-stopped
