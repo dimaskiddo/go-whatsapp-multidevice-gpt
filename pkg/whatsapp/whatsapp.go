@@ -46,7 +46,7 @@ func init() {
 		log.Println(log.LogLevelFatal, "Error Parse Environment Variable for WhatsApp Client Datastore URI")
 	}
 
-	datastore, err := sqlstore.New(dbType, dbURI, nil)
+	datastore, err := sqlstore.New(context.Background(), dbType, dbURI, nil)
 	if err != nil {
 		log.Println(log.LogLevelFatal, "Error Connect WhatsApp Client Datastore")
 	}
@@ -176,7 +176,7 @@ func WhatsAppLogin(jid string) (string, int, error) {
 			}
 
 			// Request Pairing Code
-			code, err := WhatsAppClient.PairPhone(jid, true, whatsmeow.PairClientChrome, "Chrome ("+WhatsAppGetUserOS()+")")
+			code, err := WhatsAppClient.PairPhone(context.Background(), jid, true, whatsmeow.PairClientChrome, "Chrome ("+WhatsAppGetUserOS()+")")
 			if err != nil {
 				return "", 0, err
 			}
@@ -230,13 +230,13 @@ func WhatsAppLogout() error {
 			WhatsAppPresence(false)
 
 			// Logout WhatsApp Client and Disconnect from WebSocket
-			err = WhatsAppClient.Logout()
+			err = WhatsAppClient.Logout(context.Background())
 			if err != nil {
 				// Force Disconnect
 				WhatsAppClient.Disconnect()
 
 				// Manually Delete Device from Datastore Store
-				err = WhatsAppClient.Store.Delete()
+				err = WhatsAppClient.Store.Delete(context.Background())
 				if err != nil {
 					return err
 				}

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/log"
 	pkgWhatsApp "github.com/dimaskiddo/go-whatsapp-multidevice-gpt/pkg/whatsapp"
 )
@@ -8,7 +10,7 @@ import (
 func ReloadDatastore() {
 	pkgWhatsApp.WhatsAppClient = nil
 
-	devices, err := pkgWhatsApp.WhatsAppDatastore.GetAllDevices()
+	devices, err := pkgWhatsApp.WhatsAppDatastore.GetAllDevices(context.Background())
 	if err != nil {
 		log.Println(log.LogLevelError, "Failed to Load WhatsApp Client Devices from Datastore")
 	}

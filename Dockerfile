@@ -1,6 +1,6 @@
 # Builder Image
 # ---------------------------------------------------
-FROM golang:1.22-alpine AS go-builder
+FROM golang:1.24-alpine AS go-builder
 
 WORKDIR /usr/src/app
 
@@ -15,17 +15,18 @@ RUN go mod download \
 FROM dimaskiddo/alpine:base-glibc
 MAINTAINER Dimas Restu Hidayanto <dimas.restu@student.upi.edu>
 
-ARG SERVICE_NAME="go-whatsapp-multidevice-gpt"
+ARG SERVICE_NAME="gowam-gpt"
 
 ENV PATH $PATH:/usr/app/${SERVICE_NAME}
 
 WORKDIR /usr/app/${SERVICE_NAME}
 
-RUN mkdir -p dbs \
+RUN apk --no-cache --update upgrade \
+    && mkdir -p dbs \
     && chmod 775 dbs
 
 COPY --from=go-builder /usr/src/app/.env.example ./.env
-COPY --from=go-builder /usr/src/app/main ./go-whatsapp-multidevice-gpt
+COPY --from=go-builder /usr/src/app/main ./gowam-gpt
 
 VOLUME ["/usr/app/${SERVICE_NAME}/dbs"]
-CMD ["go-whatsapp-multidevice-gpt", "daemon"]
+CMD ["gowam-gpt", "daemon"]
