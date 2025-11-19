@@ -227,7 +227,7 @@ func WhatsAppLogout() error {
 			var err error
 
 			// Set WhatsApp Client Presence to Unavailable
-			WhatsAppPresence(false)
+			WhatsAppPresence(context.Background(), false)
 
 			// Logout WhatsApp Client and Disconnect from WebSocket
 			err = WhatsAppClient.Logout(context.Background())
@@ -254,15 +254,15 @@ func WhatsAppLogout() error {
 	return errors.New("WhatsApp Client is not Valid")
 }
 
-func WhatsAppPresence(isAvailable bool) {
+func WhatsAppPresence(ctx context.Context, isAvailable bool) {
 	if isAvailable {
-		_ = WhatsAppClient.SendPresence(types.PresenceAvailable)
+		_ = WhatsAppClient.SendPresence(ctx, types.PresenceAvailable)
 	} else {
-		_ = WhatsAppClient.SendPresence(types.PresenceUnavailable)
+		_ = WhatsAppClient.SendPresence(ctx, types.PresenceUnavailable)
 	}
 }
 
-func WhatsAppComposeStatus(rjid types.JID, isComposing bool, isAudio bool) {
+func WhatsAppComposeStatus(ctx context.Context, rjid types.JID, isComposing bool, isAudio bool) {
 	// Set Compose Status
 	var typeCompose types.ChatPresence
 	if isComposing {
@@ -280,7 +280,7 @@ func WhatsAppComposeStatus(rjid types.JID, isComposing bool, isAudio bool) {
 	}
 
 	// Send Chat Compose Status
-	_ = WhatsAppClient.SendChatPresence(rjid, typeCompose, typeComposeMedia)
+	_ = WhatsAppClient.SendChatPresence(ctx, rjid, typeCompose, typeComposeMedia)
 }
 
 func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, response string) (string, error) {
@@ -318,6 +318,7 @@ func WhatsAppSendGPTResponse(ctx context.Context, event *events.Message, respons
 func WhatsAppHandler(event interface{}) {
 	switch evt := event.(type) {
 	case *events.Message:
+		ctx := context.Background()
 		realRJID := evt.Info.Chat.String()
 
 		var maskRJID string
@@ -347,11 +348,11 @@ func WhatsAppHandler(event interface{}) {
 					log.Println(log.LogLevelInfo, "Question : "+question)
 
 					// Set Chat Presence
-					WhatsAppPresence(true)
-					WhatsAppComposeStatus(evt.Info.Chat, true, false)
+					WhatsAppPresence(ctx, true)
+					WhatsAppComposeStatus(ctx, evt.Info.Chat, true, false)
 					defer func() {
-						WhatsAppComposeStatus(evt.Info.Chat, false, false)
-						WhatsAppPresence(false)
+						WhatsAppComposeStatus(ctx, evt.Info.Chat, false, false)
+						WhatsAppPresence(ctx, false)
 					}()
 
 					response, err := gpt.GPTResponse(question)
@@ -360,7 +361,7 @@ func WhatsAppHandler(event interface{}) {
 						response = "Sorry, the AI can not response for this time. Please try again after a few moment 🥺"
 					}
 
-					_, err = WhatsAppSendGPTResponse(context.Background(), evt, response)
+					_, err = WhatsAppSendGPTResponse(ctx, evt, response)
 					if err != nil {
 						log.Println(log.LogLevelError, "Failed to Send OpenAI GPT Response")
 					}
