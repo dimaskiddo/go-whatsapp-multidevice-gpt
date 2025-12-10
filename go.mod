@@ -7,8 +7,8 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/sashabaranov/go-openai v1.41.2
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
-	go.mau.fi/whatsmeow v0.0.0-20251116104239-3aca43070cd4
+	github.com/spf13/cobra v1.10.2
+	go.mau.fi/whatsmeow v0.0.0-20251205211405-fd6170ac96e5
 	google.golang.org/protobuf v1.36.10
 	modernc.org/sqlite v1.17.0
 )
@@ -24,9 +24,9 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.27 // indirect
 	go.mau.fi/libsignal v0.2.1 // indirect
 	go.mau.fi/util v0.9.3 // indirect
